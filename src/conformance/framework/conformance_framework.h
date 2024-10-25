@@ -167,7 +167,7 @@ namespace Conformance
         /// or 0 when auto skip is disabled.
         std::chrono::milliseconds autoSkipTimeout{0};
 
-        /// Options include "stereo" "mono". See enum XrViewConfigurationType.
+        /// Options include "stereo" "mono" "foveatedInset" "firstPersonObserver". See enum XrViewConfigurationType.
         /// Default is stereo.
         std::string viewConfiguration{"Stereo"};
         XrViewConfigurationType viewConfigurationValue{XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO};
@@ -310,10 +310,21 @@ namespace Conformance
         std::string GetReportString() const;
 
     public:
+        class Score
+        {
+        public:
+            uint64_t testSuccessCount{};
+            uint64_t testFailureCount{};
+        };
+        /// The total successful test case runs across all test cases.
+        uint64_t TestSuccessCount() const;
+
+        /// The total failed test case runs across all test cases.
+        uint64_t TestFailureCount() const;
+
         XrVersion apiVersion{XR_CURRENT_API_VERSION};
-        uint64_t testSuccessCount{};
-        uint64_t testFailureCount{};
-        bool unmatchedTestSpecs{false};
+        std::unordered_map<std::string, Score> results;
+        std::vector<std::string> unmatchedTestSpecs;
         Catch::Totals totals{};
         TimedSubmissionResults timedSubmission;
         std::vector<std::pair<int64_t, std::string>> swapchainFormats;

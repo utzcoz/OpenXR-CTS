@@ -79,15 +79,16 @@ class ConformanceGenerator(AutomaticSourceOutputGenerator):
         temp = AvailabilitySymbols()
         for profile in self.interaction_profiles.interaction_profiles.values():
             temp.add(profile.availability)
-            for component in profile.components.values():
-                temp.add(component.availability)
+            for _, component in profile.yield_user_path_and_component_pairs():
+                avail = profile.compute_component_availability(component)
+                temp.add(avail)
         return temp.make_frozen()
 
     # Write out all the information for the appropriate file,
     # and then call down to the base class to wrap everything up.
     #   self            the ConformanceLayerBaseGenerator object
     def endFile(self):
-        self.interaction_profiles.process_deferred()
+        self.interaction_profiles.finish_processing()
         avail_syms = self._compute_avail_symbols()
         sorted_cmds = self.core_commands + self.ext_commands
         file_data = self.template.render(

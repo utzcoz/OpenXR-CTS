@@ -16,8 +16,7 @@
 
 #include "conformance_utils.h"
 #include "conformance_framework.h"
-#include "matchers.h"
-#include "utilities/utils.h"
+#include "utilities/types_and_constants.h"
 #include "utilities/throw_helpers.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -26,168 +25,182 @@
 #include <openxr/openxr.h>
 #include <openxr/openxr_reflection.h>
 
-#include <algorithm>
 #include <chrono>
-#include <initializer_list>
-#include <ratio>
-#include <string>
 #include <thread>
-#include <vector>
-
-#define AS_LIST(name, val) name,
-constexpr XrViewConfigurationType KnownViewTypes[] = {XR_LIST_ENUM_XrViewConfigurationType(AS_LIST)};
-#undef AS_LIST
 
 namespace Conformance
 {
+    static bool tryReadEvent(XrInstance instance, XrEventDataBuffer* evt)
+    {
+        *evt = {XR_TYPE_EVENT_DATA_BUFFER};
+        XrResult res;
+        XRC_CHECK_THROW_XRCMD(res = xrPollEvent(instance, evt));
+        return res == XR_SUCCESS;
+    }
+
+    static bool tryGetNextSessionState(XrInstance instance, XrEventDataSessionStateChanged* evt)
+    {
+        XrEventDataBuffer buffer;
+        while (tryReadEvent(instance, &buffer)) {
+            if (buffer.type == XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED) {
+                *evt = *reinterpret_cast<XrEventDataSessionStateChanged*>(&buffer);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static bool waitForNextSessionState(XrInstance instance, XrEventDataSessionStateChanged* evt, std::chrono::nanoseconds duration = 1s)
+    {
+        CountdownTimer countdown(duration);
+        while (!countdown.IsTimeUp()) {
+            if (tryGetNextSessionState(instance, evt)) {
+                return true;
+            }
+
+            std::this_thread::sleep_for(5ms);
+        }
+
+        return false;
+    }
+
+    static void submitFrame(XrSession session)
+    {
+        XrFrameState frameState{XR_TYPE_FRAME_STATE};
+        XRC_CHECK_THROW_XRCMD(xrWaitFrame(session, nullptr, &frameState));
+        XRC_CHECK_THROW_XRCMD(xrBeginFrame(session, nullptr));
+
+        XrFrameEndInfo frameEndInfo{XR_TYPE_FRAME_END_INFO};
+        frameEndInfo.displayTime = frameState.predictedDisplayTime;
+        frameEndInfo.environmentBlendMode = GetGlobalData().GetOptions().environmentBlendModeValue;
+        XRC_CHECK_THROW_XRCMD(xrEndFrame(session, &frameEndInfo));
+    }
+
+    static void submitFramesUntilSessionState(XrInstance instance, XrSession session, XrSessionState expectedSessionState,
+                                              std::chrono::nanoseconds duration = 30s)
+    {
+        CAPTURE(expectedSessionState);
+
+        CountdownTimer countdown(duration);
+        while (!countdown.IsTimeUp()) {
+            XrEventDataSessionStateChanged evt;
+            if (tryGetNextSessionState(instance, &evt)) {
+                REQUIRE(evt.state == expectedSessionState);
+                return;
+            }
+            submitFrame(session);
+        }
+
+        FAIL("Failed to reach expected session state");
+    }
 
     TEST_CASE("SessionState", "")
     {
-        AutoBasicSession session(AutoBasicSession::createSession);
-        REQUIRE_MSG(session != XR_NULL_HANDLE_CPP,
-                    "If this (XrSession creation) fails, ensure the runtime is configured and the AR/VR device is present.");
+        AutoBasicInstance instance;
 
-        XrInstance instance = session.GetInstance();
-        XrSystemId systemId = session.GetSystemId();
-
-        auto tryReadEvent = [&](XrEventDataBuffer* evt) {
-            *evt = {XR_TYPE_EVENT_DATA_BUFFER};
-            XrResult res;
-            XRC_CHECK_THROW_XRCMD(res = xrPollEvent(session.GetInstance(), evt));
-            return res == XR_SUCCESS;
-        };
-
-        auto tryGetNextSessionState = [&](XrEventDataSessionStateChanged* evt) {
-            XrEventDataBuffer buffer;
-            while (tryReadEvent(&buffer)) {
-                if (buffer.type == XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED) {
-                    *evt = *reinterpret_cast<XrEventDataSessionStateChanged*>(&buffer);
-                    return true;
-                }
-            }
-
-            return false;
-        };
-
-        auto waitForNextSessionState = [&](XrEventDataSessionStateChanged* evt, std::chrono::nanoseconds duration = 1s) {
-            CountdownTimer countdown(duration);
-            while (!countdown.IsTimeUp()) {
-                if (tryGetNextSessionState(evt)) {
-                    return true;
-                }
-
-                std::this_thread::sleep_for(5ms);
-            }
-
-            return false;
-        };
-
-        XrEventDataSessionStateChanged evt{};
-        REQUIRE(waitForNextSessionState(&evt) == true);
-        REQUIRE_MSG(evt.state == XR_SESSION_STATE_IDLE, "Unexpected session state " << evt.state);
-
-        REQUIRE(waitForNextSessionState(&evt) == true);
-        REQUIRE_MSG(evt.state == XR_SESSION_STATE_READY, "Unexpected session state " << evt.state);
-
-        // Ensure unsupported view configuration types fail.
+        SECTION("Cycle through all states")
         {
-            // Get the list of supported view configurations
-            uint32_t viewCount = 0;
-            REQUIRE(XR_SUCCESS == xrEnumerateViewConfigurations(instance, systemId, 0, &viewCount, nullptr));
-            std::vector<XrViewConfigurationType> runtimeViewTypes(viewCount);
-            REQUIRE(XR_SUCCESS == xrEnumerateViewConfigurations(instance, systemId, viewCount, &viewCount, runtimeViewTypes.data()));
+            AutoBasicSession session(AutoBasicSession::createSession, instance);
 
-            for (XrViewConfigurationType viewType : KnownViewTypes) {
-                CAPTURE(viewType);
+            REQUIRE(session != XR_NULL_HANDLE_CPP);
 
-                // Is this enum valid, check against enabled extensions.
-                bool valid = IsViewConfigurationTypeEnumValid(viewType);
+            XrEventDataSessionStateChanged evt{};
+            REQUIRE(waitForNextSessionState(instance, &evt) == true);
+            REQUIRE_MSG(evt.state == XR_SESSION_STATE_IDLE, "Unexpected session state " << evt.state);
 
-                if (!IsViewConfigurationTypeEnumValid(viewType)) {
-                    INFO("Must not enumerate invalid view configuration type");
-                    CHECK_THAT(runtimeViewTypes, !Catch::Matchers::VectorContains(viewType));
-                }
+            REQUIRE(waitForNextSessionState(instance, &evt) == true);
+            REQUIRE_MSG(evt.state == XR_SESSION_STATE_READY, "Unexpected session state " << evt.state);
 
-                // Skip this view config if it is supported, since we cannot test correct handling of unsupported values with it.
-                if (Catch::Matchers::VectorContains(viewType).match(runtimeViewTypes)) {
-                    continue;
-                }
+            XrSessionBeginInfo beginInfo{XR_TYPE_SESSION_BEGIN_INFO};
+            beginInfo.primaryViewConfigurationType = GetGlobalData().GetOptions().viewConfigurationValue;
+            REQUIRE(XR_SUCCESS == xrBeginSession(session, &beginInfo));
+
+            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_SYNCHRONIZED);
+            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_VISIBLE);
+            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_FOCUSED);
+
+            // Runtime should only allow ending a session in the STOPPING state.
+            REQUIRE(XR_ERROR_SESSION_NOT_STOPPING == xrEndSession(session));
+
+            REQUIRE(XR_SUCCESS == xrRequestExitSession(session));
+
+            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_VISIBLE);
+            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_SYNCHRONIZED);
+            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_STOPPING);
+
+            // Runtime should not transition from STOPPING to IDLE until the session has been ended.
+            // This will wait 1 second before assuming no such incorrect event will come.
+            REQUIRE_MSG(waitForNextSessionState(instance, &evt) == false, "Premature progression from STOPPING to IDLE state");
+
+            REQUIRE(XR_SUCCESS == xrEndSession(session));
+
+            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_IDLE);
+
+            // https://registry.khronos.org/OpenXR/specs/1.1/html/xrspec.html#session-lifecycle
+            // If the runtime determines that its use of this XR session has
+            // concluded, it will transition the session state from
+            // XR_SESSION_STATE_IDLE to XR_SESSION_STATE_EXITING.
+            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_EXITING);
+
+            // When the application receives the XR_SESSION_STATE_EXITING
+            // event, it releases the resources related to the session and
+            // calls xrDestroySession.
+        }
+
+        SECTION("xrRequestExitSession Session Not Running")
+        {
+            SECTION("Session not running before starting")
+            {
+                AutoBasicSession session(AutoBasicSession::createSession, instance);
+
+                REQUIRE(XR_ERROR_SESSION_NOT_RUNNING == xrRequestExitSession(session));
+            }
+
+            SECTION("Session not running after ending")
+            {
+                // A session is considered running after a successful call to
+                // xrBeginSession and remains running until any call is made to
+                // xrEndSession. Certain functions are only valid to call when
+                // a session is running, such as xrWaitFrame, or else the
+                // XR_ERROR_SESSION_NOT_RUNNING error must be returned by the
+                // runtime.
+
+                // If session is not running when xrRequestExitSession is
+                // called, XR_ERROR_SESSION_NOT_RUNNING must be returned.
+
+                AutoBasicSession session(
+                    AutoBasicSession::beginSession | AutoBasicSession::createSpaces | AutoBasicSession::createSwapchains, instance);
+                REQUIRE(XR_SUCCESS == xrRequestExitSession(session));
+
+                FrameIterator frameIterator(&session);
+                frameIterator.RunToSessionState(XR_SESSION_STATE_STOPPING);
+                REQUIRE(XR_SUCCESS == xrEndSession(session));
+
+                // Actually test what we want to test!
+                REQUIRE(XR_ERROR_SESSION_NOT_RUNNING == xrRequestExitSession(session));
+            }
+        }
+
+        // Runtime should not transition from READY to SYNCHRONIZED until one
+        // or more frames have been submitted.
+        // The exception is if the runtime is transitioning to STOPPING, which
+        // should not happen during conformance testing.
+        if (GetGlobalData().IsUsingGraphicsPlugin()) {
+            SECTION("Advance without frame submission")
+            {
+                AutoBasicSession session(AutoBasicSession::createSession, instance);
+
+                FrameIterator frameIterator(&session);
+                frameIterator.RunToSessionState(XR_SESSION_STATE_READY);
 
                 XrSessionBeginInfo beginInfo{XR_TYPE_SESSION_BEGIN_INFO};
-                beginInfo.primaryViewConfigurationType = viewType;
-                XrResult result = xrBeginSession(session, &beginInfo);
-                REQUIRE_THAT(result, In<XrResult>({XR_ERROR_VALIDATION_FAILURE, XR_ERROR_VIEW_CONFIGURATION_TYPE_UNSUPPORTED}));
-                if (!valid && result == XR_ERROR_VIEW_CONFIGURATION_TYPE_UNSUPPORTED) {
-                    WARN(
-                        "On receiving an 'invalid' enum value "
-                        << viewType
-                        << ", the runtime returned as XR_ERROR_VIEW_CONFIGURATION_TYPE_UNSUPPORTED instead of XR_ERROR_VALIDATION_FAILURE, which may make it harder for apps to reason about the error.");
-                }
-                else if (valid && result == XR_ERROR_VALIDATION_FAILURE) {
-                    WARN(
-                        "On receiving a 'valid' but not supported enum value "
-                        << viewType
-                        << ", the runtime returned as XR_ERROR_VALIDATION_FAILURE instead of XR_ERROR_VIEW_CONFIGURATION_TYPE_UNSUPPORTED, which may make it harder for apps to reason about the error.");
-                }
+                beginInfo.primaryViewConfigurationType = GetGlobalData().GetOptions().viewConfigurationValue;
+                REQUIRE(XR_SUCCESS == xrBeginSession(session, &beginInfo));
+
+                // This will wait 1 second before assuming no such incorrect event will come.
+                XrEventDataSessionStateChanged evt;
+                REQUIRE_MSG(waitForNextSessionState(instance, &evt) == false, "Premature progression from READY to SYNCHRONIZED state");
             }
         }
-
-        XrSessionBeginInfo beginInfo{XR_TYPE_SESSION_BEGIN_INFO};
-        beginInfo.primaryViewConfigurationType = GetGlobalData().GetOptions().viewConfigurationValue;
-        XRC_CHECK_THROW_XRCMD(xrBeginSession(session, &beginInfo));
-
-        if (GetGlobalData().IsUsingGraphicsPlugin()) {
-            // Runtime should not transition from READY to SYNCHRONIZED until one or more frames have been submitted.
-            // The exception is if the runtime is transitioning to STOPPING, which should not happen
-            // during conformance testing. This will wait 1 second before assuming no such incorrect event will come.
-            REQUIRE_MSG(tryGetNextSessionState(&evt) == false, "Premature progression from READY to SYNCHRONIZED state");
-        }
-
-        auto submitFrame = [&]() {
-            XrFrameState frameState{XR_TYPE_FRAME_STATE};
-            XRC_CHECK_THROW_XRCMD(xrWaitFrame(session, nullptr, &frameState));
-            XRC_CHECK_THROW_XRCMD(xrBeginFrame(session, nullptr));
-
-            XrFrameEndInfo frameEndInfo{XR_TYPE_FRAME_END_INFO};
-            frameEndInfo.displayTime = frameState.predictedDisplayTime;
-            frameEndInfo.environmentBlendMode = GetGlobalData().GetOptions().environmentBlendModeValue;
-            XRC_CHECK_THROW_XRCMD(xrEndFrame(session, &frameEndInfo));
-        };
-
-        auto submitFramesUntilSessionState = [&](XrSessionState expectedSessionState, std::chrono::nanoseconds duration = 30s) {
-            CAPTURE(expectedSessionState);
-
-            CountdownTimer countdown(duration);
-            while (!countdown.IsTimeUp()) {
-                if (tryGetNextSessionState(&evt)) {
-                    REQUIRE(evt.state == expectedSessionState);
-                    return;
-                }
-                submitFrame();
-            }
-
-            FAIL("Failed to reach expected session state");
-        };
-
-        submitFramesUntilSessionState(XR_SESSION_STATE_SYNCHRONIZED);
-        submitFramesUntilSessionState(XR_SESSION_STATE_VISIBLE);
-        submitFramesUntilSessionState(XR_SESSION_STATE_FOCUSED);
-
-        // Runtime should only allow ending a session in the STOPPING state.
-        REQUIRE(XR_ERROR_SESSION_NOT_STOPPING == xrEndSession(session));
-
-        XRC_CHECK_THROW_XRCMD(xrRequestExitSession(session));
-
-        submitFramesUntilSessionState(XR_SESSION_STATE_VISIBLE);
-        submitFramesUntilSessionState(XR_SESSION_STATE_SYNCHRONIZED);
-        submitFramesUntilSessionState(XR_SESSION_STATE_STOPPING);
-
-        // Runtime should not transition from STOPPING to IDLE until the session has been ended.
-        REQUIRE_MSG(tryGetNextSessionState(&evt) == false, "Premature progression from STOPPING to IDLE state");
-
-        XRC_CHECK_THROW_XRCMD(xrEndSession(session));
-
-        submitFramesUntilSessionState(XR_SESSION_STATE_IDLE);
-        submitFramesUntilSessionState(XR_SESSION_STATE_EXITING);
     }
 }  // namespace Conformance

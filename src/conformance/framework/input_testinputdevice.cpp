@@ -76,6 +76,7 @@ namespace Conformance
             m_actionSet = actionSet;
             m_actionMap = actionMap;
             m_firstBooleanAction = firstBooleanAction;  // will be used for testing active controller
+            m_firstTrackerAction = XR_NULL_HANDLE;      // will be used for testing active controller if m_firstBooleanAction is not set
             m_shouldDestroyActionSet = false;           // actions and action sets are handled by the test, so do not destroy
         }
 
@@ -128,6 +129,9 @@ namespace Conformance
 
                 if (m_firstBooleanAction == XR_NULL_PATH && inputSourceData.Type == XR_ACTION_TYPE_BOOLEAN_INPUT) {
                     m_firstBooleanAction = action;
+                }
+                if (m_firstTrackerAction == XR_NULL_PATH && inputSourceData.Type == XR_ACTION_TYPE_POSE_INPUT) {
+                    m_firstTrackerAction = action;
                 }
 
                 const XrPath bindingPath = StringToPath(instance, inputSourceData.Path);
@@ -182,6 +186,10 @@ namespace Conformance
             XrActionSet detectionActionSet{waitCondition.detectionActionSet};
             XrAction detectionBoolAction{waitCondition.detectionBoolAction};
 
+            // The selected controller has no boolean actions so...
+            XRC_CHECK_THROW(detectionBoolAction != XR_NULL_HANDLE || m_firstBooleanAction != XR_NULL_HANDLE ||
+                            m_firstTrackerAction != XR_NULL_HANDLE);
+
             // Checks the isActive on a boolean action to determine if a controller is on
             auto findController = [&]() -> ControllerState {
                 XrActiveActionSet activeActionSets[] = {
@@ -201,15 +209,28 @@ namespace Conformance
                     }
                 }
 
-                XrActionStateBoolean booleanActionData{XR_TYPE_ACTION_STATE_BOOLEAN};
-                XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
-                getInfo.action = detectionBoolAction == XR_NULL_HANDLE ? m_firstBooleanAction : detectionBoolAction;
-                const XrResult res = xrGetActionStateBoolean(m_session, &getInfo, &booleanActionData);
-                if (res != XR_SUCCESS) {
-                    XRC_THROW_XRRESULT(res, xrGetActionStateBoolean);
-                }
+                if (detectionBoolAction != XR_NULL_HANDLE || m_firstBooleanAction != XR_NULL_HANDLE) {
+                    XrActionStateBoolean booleanActionData{XR_TYPE_ACTION_STATE_BOOLEAN};
+                    XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+                    getInfo.action = detectionBoolAction != XR_NULL_HANDLE ? detectionBoolAction : m_firstBooleanAction;
+                    const XrResult res = xrGetActionStateBoolean(m_session, &getInfo, &booleanActionData);
+                    if (res != XR_SUCCESS) {
+                        XRC_THROW_XRRESULT(res, xrGetActionStateBoolean);
+                    }
 
-                return booleanActionData.isActive ? ControllerState::Active : ControllerState::Inactive;
+                    return booleanActionData.isActive ? ControllerState::Active : ControllerState::Inactive;
+                }
+                else {
+                    XrActionStatePose trackerActionData{XR_TYPE_ACTION_STATE_POSE};
+                    XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+                    getInfo.action = m_firstTrackerAction;
+                    const XrResult res = xrGetActionStatePose(m_session, &getInfo, &trackerActionData);
+                    if (res != XR_SUCCESS) {
+                        XRC_THROW_XRRESULT(res, xrGetActionStatePose);
+                    }
+
+                    return trackerActionData.isActive ? ControllerState::Active : ControllerState::Inactive;
+                }
             };
 
             const ControllerState desiredControllerState = state ? ControllerState::Active : ControllerState::Inactive;
@@ -532,6 +553,7 @@ namespace Conformance
         std::map<XrPath, XrAction> m_actionMap;
 
         XrAction m_firstBooleanAction{XR_NULL_PATH};  // Used to detect controller state
+        XrAction m_firstTrackerAction{XR_NULL_PATH};  // Used to detect controller state
         bool m_shouldDestroyActionSet = true;         // Don't destroy the action set if the test provided one
     };
 

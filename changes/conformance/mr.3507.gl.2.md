@@ -1,0 +1,5 @@
+---
+- mr.3507.gl.2
+- mr.3521.gl
+---
+- Fix: Correctly parse and process interaction profile path and binding path dependencies from XML, and clean up code in `interaction_profile_processor.py`.

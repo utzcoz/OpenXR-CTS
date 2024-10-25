@@ -59,6 +59,7 @@ add_library(
     string_utils.cpp
     stringification.cpp
     swapchain_format_data.cpp
+    swapchain_parameters.cpp
     throw_helpers.cpp
     types_and_constants.cpp
     utils.cpp

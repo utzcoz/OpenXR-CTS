@@ -440,12 +440,13 @@ namespace Conformance
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // AutoBasicSession
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    AutoBasicSession::AutoBasicSession(int optionFlags_, XrInstance instance_) : optionFlags(optionFlags_)
+    AutoBasicSession::AutoBasicSession(int optionFlags_, XrInstance instance_, XrViewConfigurationType viewConfigType_)
+        : optionFlags(optionFlags_)
     {
-        Init(optionFlags_, instance_);
+        Init(optionFlags_, instance_, viewConfigType_);
     }
 
-    void AutoBasicSession::Init(int optionFlags_, XrInstance instance_)
+    void AutoBasicSession::Init(int optionFlags_, XrInstance instance_, XrViewConfigurationType viewConfigType_)
     {
         GlobalData& globalData = GetGlobalData();
 
@@ -467,6 +468,8 @@ namespace Conformance
 
             instance = instance_;
             optionFlags = optionFlags_;
+            viewConfigurationType =
+                viewConfigType_ == XR_VIEW_CONFIGURATION_TYPE_MAX_ENUM ? globalData.options.viewConfigurationValue : viewConfigType_;
 
             if ((optionFlags & createInstance) == 0) {
                 // cannot proceed further without an instance
@@ -503,16 +506,13 @@ namespace Conformance
             XRC_CHECK_THROW_XRCMD(xrStringToPath(instance, "/user/hand/left", &handSubactionArray[0]));
             XRC_CHECK_THROW_XRCMD(xrStringToPath(instance, "/user/hand/right", &handSubactionArray[1]));
 
-            // Note that while we are enumerating this, normally our testing is done via a pre-chosen one (globalData.options.viewConfigurationValue).
-            XRC_CHECK_THROW_XRCMD(doTwoCallInPlace(viewConfigurationTypeVector, xrEnumerateViewConfigurations, instance, systemId));
-
-            // We use globalData.options.viewConfigurationValue as the type we enumerate with, despite that the runtime may support others.
+            // We use viewConfigurationType as the type we enumerate with, despite that the runtime may support others.
             XRC_CHECK_THROW_XRCMD(doTwoCallInPlaceWithEmptyElement(viewConfigurationViewVector, {XR_TYPE_VIEW_CONFIGURATION_VIEW},
                                                                    xrEnumerateViewConfigurationViews, instance, systemId,
-                                                                   globalData.options.viewConfigurationValue));
+                                                                   viewConfigurationType));
 
-            XRC_CHECK_THROW_XRCMD(doTwoCallInPlace(environmentBlendModeVector, xrEnumerateEnvironmentBlendModes, instance, systemId,
-                                                   globalData.options.viewConfigurationValue));
+            XRC_CHECK_THROW_XRCMD(
+                doTwoCallInPlace(environmentBlendModeVector, xrEnumerateEnvironmentBlendModes, instance, systemId, viewConfigurationType));
 
             if ((optionFlags & createSwapchains) && globalData.IsUsingGraphicsPlugin()) {
                 auto graphicsPlugin = globalData.GetGraphicsPlugin();
@@ -604,8 +604,13 @@ namespace Conformance
 
         XrSessionBeginInfo sessionBeginInfo{XR_TYPE_SESSION_BEGIN_INFO,
                                             globalData.GetPlatformPlugin()->PopulateNextFieldForStruct(XR_TYPE_SESSION_BEGIN_INFO),
-                                            globalData.options.viewConfigurationValue};
+                                            viewConfigurationType};
         XRC_CHECK_THROW_XRCMD(xrBeginSession(session, &sessionBeginInfo));
+
+        // We potentially changed the view configuration so we need to update the viewConfigurationViewVector
+        XRC_CHECK_THROW_XRCMD(doTwoCallInPlaceWithEmptyElement(viewConfigurationViewVector, {XR_TYPE_VIEW_CONFIGURATION_VIEW},
+                                                               xrEnumerateViewConfigurationViews, instance, systemId,
+                                                               viewConfigurationType));
     }
 
     AutoBasicSession::~AutoBasicSession()
@@ -626,9 +631,11 @@ namespace Conformance
         actionSet = XR_NULL_HANDLE;     // Let parent session destroy this.
         actionVector.clear();           // Let parent session destroy this.
         spaceTypeVector.clear();        // Let parent session destroy this.
-        viewConfigurationTypeVector.clear();
+        spaceVector.clear();
         viewConfigurationViewVector.clear();
         environmentBlendModeVector.clear();
+        viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_MAX_ENUM;
+        sessionState = XR_SESSION_STATE_UNKNOWN;
 
         if (session != XR_NULL_HANDLE) {
             xrDestroySession(session);
@@ -675,7 +682,6 @@ namespace Conformance
         XRC_CHECK_THROW(autoBasicSession);
         XRC_CHECK_THROW(autoBasicSession->GetInstance());
         XRC_CHECK_THROW(autoBasicSession->GetSession());
-        XRC_CHECK_THROW(!autoBasicSession->viewConfigurationTypeVector.empty());
         XRC_CHECK_THROW(!autoBasicSession->environmentBlendModeVector.empty());
     }
 
@@ -762,7 +768,7 @@ namespace Conformance
             return RunResult::Error;
 
         XrViewLocateInfo viewLocateInfo{XR_TYPE_VIEW_LOCATE_INFO};
-        viewLocateInfo.viewConfigurationType = GetGlobalData().options.viewConfigurationValue;
+        viewLocateInfo.viewConfigurationType = autoBasicSession->viewConfigurationType;
         viewLocateInfo.displayTime = frameState.predictedDisplayTime;
         viewLocateInfo.space = autoBasicSession->spaceVector[0];
         XrViewState viewState{XR_TYPE_VIEW_STATE};
@@ -906,7 +912,7 @@ namespace Conformance
                     GlobalData& globalData = GetGlobalData();
                     XrSessionBeginInfo sessionBeginInfo{
                         XR_TYPE_SESSION_BEGIN_INFO, globalData.GetPlatformPlugin()->PopulateNextFieldForStruct(XR_TYPE_SESSION_BEGIN_INFO),
-                        globalData.options.viewConfigurationValue};
+                        autoBasicSession->viewConfigurationType};
                     REQUIRE(xrBeginSession(autoBasicSession->GetSession(), &sessionBeginInfo) == XR_SUCCESS);
                 }
 

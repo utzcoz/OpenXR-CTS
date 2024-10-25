@@ -1,0 +1,2 @@
+- Improvement: Update `stb_image` from 2.27 to 2.30 (latest upstream) for fixes, security improvements, and optimizations.
+- Improvement: Update `stb_typetype` to latest upstream for float comparison fixes.

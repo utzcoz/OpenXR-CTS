@@ -354,6 +354,12 @@ For any supported interaction profiles that are valid for `/user/gamepad`
 rather than `/user/hand/left` and `/user/hand/right`, further filter the
 tests by specifying the tag `[gamepad]`.
 
+To clarify, if you support providing input for all components of one of the
+following interaction profiles, specify them as well.
+
+* `/interaction_profiles/khr/simple_controller`
+* `/interaction_profiles/ext/hand_interaction_ext`
+* `/interaction_profiles/ext/eye_gaze_interaction`
 
 .Example command lines for OpenXR 1.0
 [%collapsible]
@@ -362,9 +368,14 @@ Select the interaction profiles to test based on the preceding description.
 
 [source,sh]
 ----
-# Generic profile
+## Generic: Simple controller
 conformance_cli "[actions][interactive]" -G d3d11 -I "khr/simple_controller" --apiVersion 1.0 --reporter ctsxml::out=interactive_action_simple_controller_1_0.xml
 
+## Generic: Hand interaction (whether via hand tracking or controller)
+conformance_cli "[actions][interactive]" -G d3d11 -I "ext/hand_interaction_ext" --apiVersion 1.0 --reporter ctsxml::out=interactive_action_ext_hand_interaction_interaction_1_0.xml
+
+## Generic: Eye gaze
+conformance_cli "[actions][interactive]" -G d3d11 -I "ext/eye_gaze_interaction" --apiVersion 1.0 --reporter ctsxml::out=interactive_action_ext_eye_gaze_interaction_1_0.xml
 
 # Sample device-associated profiles
 conformance_cli "[actions][interactive]" -G d3d11 -I "microsoft/motion_controller" --apiVersion 1.0 --reporter ctsxml::out=interactive_action_microsoft_motion_controller_1_0.xml
@@ -382,9 +393,14 @@ conformance_cli "[actions][interactive]" -G d3d11 -I "htc/vive_controller" --api
 Select the interaction profiles to test based on the preceding description.
 [source,sh]
 ----
-# Generic profile
+## Generic: Simple controller
 conformance_cli "[actions][interactive]" -G d3d11 -I "khr/simple_controller" --apiVersion 1.1 --reporter ctsxml::out=interactive_action_simple_controller_1_1.xml
 
+## Generic: Hand interaction (whether via hand tracking or controller)
+conformance_cli "[actions][interactive]" -G d3d11 -I "ext/hand_interaction_ext" --apiVersion 1.1 --reporter ctsxml::out=interactive_action_ext_hand_interaction_interaction_1_1.xml
+
+## Generic: Eye gaze
+conformance_cli "[actions][interactive]" -G d3d11 -I "ext/eye_gaze_interaction" --apiVersion 1.1 --reporter ctsxml::out=interactive_action_ext_eye_gaze_interaction_1_1.xml
 
 # Sample device-associated profiles
 conformance_cli "[actions][interactive]" -G d3d11 -I "microsoft/motion_controller" --apiVersion 1.1 --reporter ctsxml::out=interactive_action_microsoft_motion_controller_1_1.xml
@@ -423,11 +439,25 @@ Select the interaction profiles to test based on the preceding description.
 
 [source,sh]
 ----
-## Generic profile
+## Generic: Simple controller
 adb shell am start-activity -S -n org.khronos.openxr.cts/android.app.NativeActivity --esa args "[actions][interactive],-I,khr/simple_controller" -e apiVersion 1.0 -e xmlFilename interactive_action_simple_controller_1_0.xml
 
 # Wait until tests complete, then retrieve results with
 adb pull /sdcard/Android/data/org.khronos.openxr.cts/files/interactive_action_simple_controller_1_0.xml
+
+
+## Generic: Hand interaction (whether via hand tracking or controller)
+adb shell am start-activity -S -n org.khronos.openxr.cts/android.app.NativeActivity --esa args "[actions][interactive],-I,ext/hand_interaction_ext" -e apiVersion 1.0 -e xmlFilename interactive_action_ext_hand_interaction_1_0.xml
+
+# Wait until tests complete, then retrieve results with
+adb pull /sdcard/Android/data/org.khronos.openxr.cts/files/interactive_action_ext_hand_interaction_1_0.xml
+
+
+## Generic: Eye gaze interaction
+adb shell am start-activity -S -n org.khronos.openxr.cts/android.app.NativeActivity --esa args "[actions][interactive],-I,ext/eye_gaze_interaction" -e apiVersion 1.0 -e xmlFilename interactive_action_ext_eye_gaze_interaction_1_0.xml
+
+# Wait until tests complete, then retrieve results with
+adb pull /sdcard/Android/data/org.khronos.openxr.cts/files/interactive_action_ext_eye_gaze_interaction_1_0.xml
 
 
 ## Sample device-associated profile
@@ -451,11 +481,25 @@ adb pull /sdcard/Android/data/org.khronos.openxr.cts/files/interactive_action_mi
 ====
 [source,sh]
 ----
-## Generic profile
+## Generic: Simple controller
 adb shell am start-activity -S -n org.khronos.openxr.cts/android.app.NativeActivity --esa args "[actions][interactive],-I,khr/simple_controller" -e apiVersion 1.1 -e xmlFilename interactive_action_simple_controller_1_1.xml
 
 # Wait until tests complete, then retrieve results with
 adb pull /sdcard/Android/data/org.khronos.openxr.cts/files/interactive_action_simple_controller_1_1.xml
+
+
+## Generic: Hand interaction (whether via hand tracking or controller)
+adb shell am start-activity -S -n org.khronos.openxr.cts/android.app.NativeActivity --esa args "[actions][interactive],-I,ext/hand_interaction_ext" -e apiVersion 1.1 -e xmlFilename interactive_action_ext_hand_interaction_1_1.xml
+
+# Wait until tests complete, then retrieve results with
+adb pull /sdcard/Android/data/org.khronos.openxr.cts/files/interactive_action_ext_hand_interaction_1_1.xml
+
+
+## Generic: Eye gaze interaction
+adb shell am start-activity -S -n org.khronos.openxr.cts/android.app.NativeActivity --esa args "[actions][interactive],-I,ext/eye_gaze_interaction" -e apiVersion 1.1 -e xmlFilename interactive_action_ext_eye_gaze_interaction_1_1.xml
+
+# Wait until tests complete, then retrieve results with
+adb pull /sdcard/Android/data/org.khronos.openxr.cts/files/interactive_action_ext_eye_gaze_interaction_1_1.xml
 
 
 ## Sample device-associated profile

@@ -34,7 +34,9 @@
 #include <openxr/openxr_reflection.h>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <catch2/catch_message.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
+#include <catch2/matchers/catch_matchers_vector.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -1047,19 +1049,18 @@ namespace Conformance
                 XrBoundSourcesForActionEnumerateInfo info{XR_TYPE_BOUND_SOURCES_FOR_ACTION_ENUMERATE_INFO};
                 info.action = selectAction;
                 uint32_t sourceCountOutput;
-                XrPath buffer;
-                REQUIRE_RESULT(xrEnumerateBoundSourcesForAction(session, &info, 0, &sourceCountOutput, &buffer),
+                REQUIRE_RESULT(xrEnumerateBoundSourcesForAction(session, &info, 0, &sourceCountOutput, nullptr),
                                XR_ERROR_ACTIONSET_NOT_ATTACHED);
-            }
-            SECTION("Get localized source name")
-            {
-                XrInputSourceLocalizedNameGetInfo getInfo{XR_TYPE_INPUT_SOURCE_LOCALIZED_NAME_GET_INFO};
-                getInfo.whichComponents = XR_INPUT_SOURCE_LOCALIZED_NAME_USER_PATH_BIT;
-                getInfo.sourcePath = StringToPath(instance, "/user/hand/left/input/select/click");
-                uint32_t sourceCountOutput;
-                char buffer;
-                REQUIRE_RESULT(xrGetInputSourceLocalizedName(session, &getInfo, 0, &sourceCountOutput, &buffer),
-                               XR_ERROR_ACTIONSET_NOT_ATTACHED);
+
+                REQUIRE_RESULT(xrAttachSessionActionSets(session, &attachInfo), XR_SUCCESS);
+
+                std::vector<XrPath> boundSourcesPaths = REQUIRE_TWO_CALL(XrPath, {}, xrEnumerateBoundSourcesForAction, session, &info);
+                sourceCountOutput = static_cast<uint32_t>(boundSourcesPaths.size());
+
+                // should not get a null path, not really much else we can assert here.
+                REQUIRE_THAT(boundSourcesPaths, !Catch::Matchers::VectorContains(XrPath{}));
+                // Can we assert that we don't enumerate duplicates? Would be weird to return duplicates but may not be strictly forbidden.
+                REQUIRE_THAT(boundSourcesPaths, VectorHasOnlyUniqueElements<XrPath>{});
             }
         }
         SECTION("Unattached action sets")
@@ -3925,65 +3926,94 @@ namespace Conformance
 
                 REQUIRE(enumerateResult.size() > 0);
 
+                // should not get a null path, not really much else we can assert here.
+                REQUIRE_THAT(enumerateResult, !Catch::Matchers::VectorContains(XrPath{}));
+                // Can we assert that we don't enumerate duplicates? Would be weird to return duplicates but may not be strictly forbidden.
+                REQUIRE_THAT(enumerateResult, VectorHasOnlyUniqueElements<XrPath>{});
+
                 XrInputSourceLocalizedNameGetInfo getInfo{XR_TYPE_INPUT_SOURCE_LOCALIZED_NAME_GET_INFO};
+                getInfo.whichComponents = XR_INPUT_SOURCE_LOCALIZED_NAME_USER_PATH_BIT;
                 getInfo.sourcePath = enumerateResult[0];
-                SECTION("xrGetInputSourceLocalizedName")
+
+                uint32_t sourceCountOutput;
+                SECTION("Invalid components")
                 {
-                    getInfo.whichComponents = XR_INPUT_SOURCE_LOCALIZED_NAME_USER_PATH_BIT;
-                    std::vector<char> localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
-                    CHECK(localizedStringResult.size() > 1);  // more than null terminator
-                    CHECK_THAT(localizedStringResult, NullTerminatedVec());
+                    getInfo.whichComponents = 0;
+                    REQUIRE_RESULT(xrGetInputSourceLocalizedName(session, &getInfo, 0, &sourceCountOutput, nullptr),
+                                   XR_ERROR_VALIDATION_FAILURE);
+                }
+                SECTION("Invalid path")
+                {
+                    getInfo.sourcePath = XR_NULL_PATH;
+                    REQUIRE_RESULT(xrGetInputSourceLocalizedName(session, &getInfo, 0, &sourceCountOutput, nullptr), XR_ERROR_PATH_INVALID);
+                    getInfo.sourcePath = (XrPath)0x1234;
+                    REQUIRE_RESULT(xrGetInputSourceLocalizedName(session, &getInfo, 0, &sourceCountOutput, nullptr), XR_ERROR_PATH_INVALID);
+                }
 
-                    getInfo.whichComponents = XR_INPUT_SOURCE_LOCALIZED_NAME_INTERACTION_PROFILE_BIT;
-                    localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
-                    CHECK(localizedStringResult.size() > 1);  // more than null terminator
-                    CHECK_THAT(localizedStringResult, NullTerminatedVec());
+                SECTION("xrGetInputSourceLocalizedName-on-each")
+                {
+                    for (size_t i = 0; i < enumerateResult.size(); ++i) {
+                        getInfo.sourcePath = enumerateResult[i];
+                        CAPTURE(i);
 
-                    getInfo.whichComponents = XR_INPUT_SOURCE_LOCALIZED_NAME_COMPONENT_BIT;
-                    localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
-                    CHECK(localizedStringResult.size() > 1);  // more than null terminator
-                    CHECK_THAT(localizedStringResult, NullTerminatedVec());
+                        auto s = PathToString(instance, getInfo.sourcePath);
+                        CHECK(!s.empty());
+                        CAPTURE(s);
+                        std::vector<char> localizedStringResult;
 
-                    getInfo.whichComponents =
-                        XR_INPUT_SOURCE_LOCALIZED_NAME_USER_PATH_BIT | XR_INPUT_SOURCE_LOCALIZED_NAME_INTERACTION_PROFILE_BIT;
-                    localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
-                    CHECK(localizedStringResult.size() > 1);  // more than null terminator
-                    CHECK_THAT(localizedStringResult, NullTerminatedVec());
-
-                    getInfo.whichComponents = XR_INPUT_SOURCE_LOCALIZED_NAME_USER_PATH_BIT | XR_INPUT_SOURCE_LOCALIZED_NAME_COMPONENT_BIT;
-                    localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
-                    CHECK(localizedStringResult.size() > 1);  // more than null terminator
-                    CHECK_THAT(localizedStringResult, NullTerminatedVec());
-
-                    getInfo.whichComponents =
-                        XR_INPUT_SOURCE_LOCALIZED_NAME_INTERACTION_PROFILE_BIT | XR_INPUT_SOURCE_LOCALIZED_NAME_COMPONENT_BIT;
-                    localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
-                    CHECK(localizedStringResult.size() > 1);  // more than null terminator
-                    CHECK_THAT(localizedStringResult, NullTerminatedVec());
-
-                    getInfo.whichComponents = XR_INPUT_SOURCE_LOCALIZED_NAME_USER_PATH_BIT |
-                                              XR_INPUT_SOURCE_LOCALIZED_NAME_INTERACTION_PROFILE_BIT |
-                                              XR_INPUT_SOURCE_LOCALIZED_NAME_COMPONENT_BIT;
-                    localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
-                    CHECK(localizedStringResult.size() > 1);  // more than null terminator
-                    CHECK_THAT(localizedStringResult, NullTerminatedVec());
-
-                    uint32_t sourceCountOutput;
-                    char buffer;
-                    SECTION("Invalid components")
-                    {
-                        getInfo.whichComponents = 0;
-                        REQUIRE_RESULT(xrGetInputSourceLocalizedName(session, &getInfo, 0, &sourceCountOutput, &buffer),
-                                       XR_ERROR_VALIDATION_FAILURE);
-                    }
-                    SECTION("Invalid path")
-                    {
-                        getInfo.sourcePath = XR_NULL_PATH;
-                        REQUIRE_RESULT(xrGetInputSourceLocalizedName(session, &getInfo, 0, &sourceCountOutput, &buffer),
-                                       XR_ERROR_PATH_INVALID);
-                        getInfo.sourcePath = (XrPath)0x1234;
-                        REQUIRE_RESULT(xrGetInputSourceLocalizedName(session, &getInfo, 0, &sourceCountOutput, &buffer),
-                                       XR_ERROR_PATH_INVALID);
+                        {
+                            CAPTURE(XrInputSourceLocalizedNameFlagsRefCPP(getInfo.whichComponents) =
+                                        XR_INPUT_SOURCE_LOCALIZED_NAME_USER_PATH_BIT);
+                            localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
+                            CHECK(localizedStringResult.size() > 1);  // more than null terminator
+                            CHECK_THAT(localizedStringResult, NullTerminatedVec());
+                        }
+                        {
+                            CAPTURE(XrInputSourceLocalizedNameFlagsRefCPP(getInfo.whichComponents) =
+                                        XR_INPUT_SOURCE_LOCALIZED_NAME_INTERACTION_PROFILE_BIT);
+                            localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
+                            CHECK(localizedStringResult.size() > 1);  // more than null terminator
+                            CHECK_THAT(localizedStringResult, NullTerminatedVec());
+                        }
+                        {
+                            CAPTURE(XrInputSourceLocalizedNameFlagsRefCPP(getInfo.whichComponents) =
+                                        XR_INPUT_SOURCE_LOCALIZED_NAME_COMPONENT_BIT);
+                            localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
+                            CHECK(localizedStringResult.size() > 1);  // more than null terminator
+                            CHECK_THAT(localizedStringResult, NullTerminatedVec());
+                        }
+                        {
+                            CAPTURE(XrInputSourceLocalizedNameFlagsRefCPP(getInfo.whichComponents) =
+                                        XR_INPUT_SOURCE_LOCALIZED_NAME_USER_PATH_BIT |
+                                        XR_INPUT_SOURCE_LOCALIZED_NAME_INTERACTION_PROFILE_BIT);
+                            localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
+                            CHECK(localizedStringResult.size() > 1);  // more than null terminator
+                            CHECK_THAT(localizedStringResult, NullTerminatedVec());
+                        }
+                        {
+                            CAPTURE(XrInputSourceLocalizedNameFlagsRefCPP(getInfo.whichComponents) =
+                                        XR_INPUT_SOURCE_LOCALIZED_NAME_USER_PATH_BIT | XR_INPUT_SOURCE_LOCALIZED_NAME_COMPONENT_BIT);
+                            localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
+                            CHECK(localizedStringResult.size() > 1);  // more than null terminator
+                            CHECK_THAT(localizedStringResult, NullTerminatedVec());
+                        }
+                        {
+                            CAPTURE(XrInputSourceLocalizedNameFlagsRefCPP(getInfo.whichComponents) =
+                                        XR_INPUT_SOURCE_LOCALIZED_NAME_INTERACTION_PROFILE_BIT |
+                                        XR_INPUT_SOURCE_LOCALIZED_NAME_COMPONENT_BIT);
+                            localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
+                            CHECK(localizedStringResult.size() > 1);  // more than null terminator
+                            CHECK_THAT(localizedStringResult, NullTerminatedVec());
+                        }
+                        {
+                            CAPTURE(XrInputSourceLocalizedNameFlagsRefCPP(getInfo.whichComponents) =
+                                        XR_INPUT_SOURCE_LOCALIZED_NAME_USER_PATH_BIT |
+                                        XR_INPUT_SOURCE_LOCALIZED_NAME_INTERACTION_PROFILE_BIT |
+                                        XR_INPUT_SOURCE_LOCALIZED_NAME_COMPONENT_BIT);
+                            localizedStringResult = REQUIRE_TWO_CALL(char, {}, xrGetInputSourceLocalizedName, session, &getInfo);
+                            CHECK(localizedStringResult.size() > 1);  // more than null terminator
+                            CHECK_THAT(localizedStringResult, NullTerminatedVec());
+                        }
                     }
                 }
             }

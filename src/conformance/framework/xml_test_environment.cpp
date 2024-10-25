@@ -31,8 +31,8 @@ namespace Conformance
             .writeAttribute("patch", XR_VERSION_PATCH(cr.apiVersion))
             .writeText(to_hex(cr.apiVersion));
         xml.scopedElement(CTS_XML_NS_PREFIX_QUALIFIER "results")
-            .writeAttribute("testSuccessCount", cr.testSuccessCount)
-            .writeAttribute("testFailureCount", cr.testFailureCount);
+            .writeAttribute("testSuccessCount", cr.TestSuccessCount())
+            .writeAttribute("testFailureCount", cr.TestFailureCount());
         if (cr.timedSubmission.IsValid()) {
             const auto& timing = cr.timedSubmission;
             using ms = std::chrono::duration<float, std::milli>;

@@ -17,12 +17,10 @@ import configparser
 
 def update_makefile(fn, spec_version):
     for line in fileinput.input(fn, inplace=True):
-        printed = False
         if 'SPECREVISION = ' in line:
-            printed = True
             print('SPECREVISION = %s.%s.%s' % spec_version)
-        if not printed:
-            print(f"{line}", end='')
+        else:
+            print(line, end='')
 
 
 if __name__ == "__main__":
@@ -32,8 +30,6 @@ if __name__ == "__main__":
         config = configparser.ConfigParser()
         config.read_file(fp)
         versions = config['Version']
-        major_version = versions['MAJOR']
-        minor_version = versions['MINOR']
         spec_version = (versions['MAJOR'], versions['MINOR'], versions['PATCH'])
 
     # Now update the version in the appropriate places in the
@@ -41,13 +37,10 @@ if __name__ == "__main__":
     #
     print('Replacing version lines in the registry')
     for line in fileinput.input('registry/xr.xml', inplace=True):
-        printed = False
-        if '<name>XR_CURRENT_API_VERSION</name>' in line:
-            if 'XR_MAKE_VERSION' in line:
-                printed = True
-                print('#define <name>XR_CURRENT_API_VERSION</name> <type>XR_MAKE_VERSION</type>(%s, %s, %s)</type>' % spec_version)
-        if not printed:
-            print(f"{line}", end='')
+        if '<name>XR_CURRENT_API_VERSION</name>' in line and 'XR_MAKE_VERSION' in line:
+            print('#define <name>XR_CURRENT_API_VERSION</name> <type>XR_MAKE_VERSION</type>(%s, %s, %s)</type>' % spec_version)
+        else:
+            print(line, end='')
 
     # Now update the version in the appropriate places in the
     # specification make file (Makefile).

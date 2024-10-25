@@ -14,8 +14,8 @@ with tests that build on them, submission of a CTS results package does not
 require them.
 Currently, the only self-tests tagged in this way are for the PBR/glTF
 rendering subsystem.
-They synchronously load very large, artificial test assets, originally from
-the "glTF-Sample-Models" repository, to test specific details of the
+They (asynchronously) load very large, artificial test assets, originally
+from the "glTF-Sample-Models" repository, to test specific details of the
 renderer.
 
 To run the self-tests, commands similar to the following can be used:
@@ -50,3 +50,60 @@ conformance_cli "[self_test][interactive]" -G opengl --apiVersion 1.1 --reporter
 ----
 ====
 
+.Corresponding ADB commands to launch on Android for OpenXR 1.0
+[%collapsible]
+====
+Omit any graphics API binding extensions your runtime does not support.
+These commands do not match one-to-one with the desktop examples due to
+different graphics API availability on Android.
+
+[source,sh]
+----
+adb shell am start-activity -S -n org.khronos.openxr.cts/android.app.NativeActivity --esa args "[self_test][interactive]" -e graphicsPlugin vulkan -e apiVersion 1.0 -e xmlFilename interactive_self_test_vulkan_1_0.xml
+
+# Wait until tests complete, then retrieve results with
+adb pull /sdcard/Android/data/org.khronos.openxr.cts/files/interactive_self_test_vulkan_1_0.xml
+
+
+adb shell am start-activity -S -n org.khronos.openxr.cts/android.app.NativeActivity --esa args "[self_test][interactive]" -e graphicsPlugin vulkan2 -e apiVersion 1.0 -e xmlFilename interactive_self_test_vulkan2_1_0.xml
+
+# Wait until tests complete, then retrieve results with
+adb pull /sdcard/Android/data/org.khronos.openxr.cts/files/interactive_self_test_vulkan2_1_0.xml
+
+
+adb shell am start-activity -S -n org.khronos.openxr.cts/android.app.NativeActivity --esa args "[self_test][interactive]" -e graphicsPlugin opengles -e apiVersion 1.0 -e xmlFilename interactive_self_test_opengles_1_0.xml
+
+# Wait until tests complete, then retrieve results with
+adb pull /sdcard/Android/data/org.khronos.openxr.cts/files/interactive_self_test_opengles_1_0.xml
+
+----
+====
+
+.Corresponding ADB commands to launch on Android for OpenXR 1.1
+[%collapsible]
+====
+Omit any graphics API binding extensions your runtime does not support.
+These commands do not match one-to-one with the desktop examples due to
+different graphics API availability on Android.
+
+[source,sh]
+----
+adb shell am start-activity -S -n org.khronos.openxr.cts/android.app.NativeActivity --esa args "[self_test][interactive]" -e graphicsPlugin vulkan -e apiVersion 1.1 -e xmlFilename interactive_self_test_vulkan_1_1.xml
+
+# Wait until tests complete, then retrieve results with
+adb pull /sdcard/Android/data/org.khronos.openxr.cts/files/interactive_self_test_vulkan_1_1.xml
+
+
+adb shell am start-activity -S -n org.khronos.openxr.cts/android.app.NativeActivity --esa args "[self_test][interactive]" -e graphicsPlugin vulkan2 -e apiVersion 1.1 -e xmlFilename interactive_self_test_vulkan2_1_1.xml
+
+# Wait until tests complete, then retrieve results with
+adb pull /sdcard/Android/data/org.khronos.openxr.cts/files/interactive_self_test_vulkan2_1_1.xml
+
+
+adb shell am start-activity -S -n org.khronos.openxr.cts/android.app.NativeActivity --esa args "[self_test][interactive]" -e graphicsPlugin opengles -e apiVersion 1.1 -e xmlFilename interactive_self_test_opengles_1_1.xml
+
+# Wait until tests complete, then retrieve results with
+adb pull /sdcard/Android/data/org.khronos.openxr.cts/files/interactive_self_test_opengles_1_1.xml
+
+----
+====

@@ -22,7 +22,8 @@ namespace Conformance
     _(XrSwapchainUsageFlags)                 \
     _(XrCompositionLayerFlags)               \
     _(XrViewStateFlags)                      \
-    _(XrSpaceLocationFlags)
+    _(XrSpaceLocationFlags)                  \
+    _(XrInputSourceLocalizedNameFlags)
 
     namespace detail
     {

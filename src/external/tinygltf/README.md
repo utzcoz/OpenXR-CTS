@@ -9,7 +9,7 @@ If you are looking for old, C++03 version, please use `devel-picojson` branch (b
 ## Status
 
 Currently TinyGLTF is stable and maintenance mode. No drastic changes and feature additions planned.
-
+ - v2.9.0 Various fixes and improvements. Filesystem callback API change.
  - v2.8.0 Add URICallbacks for custom URI handling in Buffer and Image. PR#397
  - v2.7.0 Change WriteImageDataFunction user callback function signature. PR#393
  - v2.6.0 Support serializing sparse accessor(Thanks to @fynv).
@@ -25,8 +25,6 @@ Currently TinyGLTF is stable and maintenance mode. No drastic changes and featur
 * `sajson` : Use sajson to parse JSON. Parsing only but faster compile time(2x reduction compared to json.hpp and RapidJson), but not well maintained.
 
 ## Builds
-
-[![Build Status](https://travis-ci.org/syoyo/tinygltf.svg?branch=devel)](https://travis-ci.org/syoyo/tinygltf)
 
 [![Build status](https://ci.appveyor.com/api/projects/status/warngenu9wjjhlm8?svg=true)](https://ci.appveyor.com/project/syoyo/tinygltf)
 
@@ -109,6 +107,7 @@ WASI build example is located in [wasm](wasm) .
 * [SanityEngine](https://github.com/DethRaid/SanityEngine) - A C++/D3D12 renderer focused on the personal and professional development of its developer
 * [Open3D](http://www.open3d.org/) - A Modern Library for 3D Data Processing
 * [Supernova Engine](https://github.com/supernovaengine/supernova) - Game engine for 2D and 3D projects with Lua or C++ in data oriented design.
+* [Wicked Engine<img src="https://github.com/turanszkij/WickedEngine/blob/master/Content/logo_small.png" width="28px" align="center"/>](https://github.com/turanszkij/WickedEngine) - 3D engine with modern graphics
 * Your projects here! (Please send PR)
 
 ## TODOs
@@ -196,6 +195,7 @@ if (!ret) {
 * `TINYGLTF_NO_INCLUDE_STB_IMAGE_WRITE `: Disable including `stb_image_write.h` from within `tiny_gltf.h` because it has been already included before or you want to include it using custom path before including `tiny_gltf.h`.
 * `TINYGLTF_USE_RAPIDJSON` : Use RapidJSON as a JSON parser/serializer. RapidJSON files are not included in TinyGLTF repo. Please set an include path to RapidJSON if you enable this feature.
 * `TINYGLTF_USE_CPP14` : Use C++14 feature(requires C++14 compiler). This may give better performance than C++11.
+
 
 ## CMake options
 

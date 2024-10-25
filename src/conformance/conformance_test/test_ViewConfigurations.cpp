@@ -19,6 +19,8 @@
 #include "matchers.h"
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
+#include <catch2/matchers/catch_matchers_vector.hpp>
 #include <openxr/openxr.h>
 
 #include <algorithm>
@@ -29,7 +31,6 @@
 
 namespace Conformance
 {
-
     TEST_CASE("ViewConfigurations", "")
     {
         // XrResult xrEnumerateViewConfigurations(XrInstance instance, XrSystemId systemId, uint32_t viewConfigurationTypeCapacityInput,
@@ -68,6 +69,59 @@ namespace Conformance
                 REQUIRE(xrEnumerateViewConfigurations(instance, instance.systemId, countOutput, &countOutput, vctArray.data()) ==
                         XR_SUCCESS);
                 REQUIRE(countOutput == vctArray.size());
+            }
+        }
+
+        // Ensure unsupported view configuration types fail.
+        {
+#define AS_LIST(name, val) name,
+            constexpr XrViewConfigurationType KnownViewTypes[] = {XR_LIST_ENUM_XrViewConfigurationType(AS_LIST)};
+#undef AS_LIST
+
+            XrSystemId systemId = instance.systemId;
+
+            // Get the list of supported view configurations
+            uint32_t viewCount = 0;
+            REQUIRE(XR_SUCCESS == xrEnumerateViewConfigurations(instance, systemId, 0, &viewCount, nullptr));
+            std::vector<XrViewConfigurationType> runtimeViewTypes(viewCount);
+            REQUIRE(XR_SUCCESS == xrEnumerateViewConfigurations(instance, systemId, viewCount, &viewCount, runtimeViewTypes.data()));
+
+            AutoBasicSession session(AutoBasicSession::createSession, instance);
+            FrameIterator frameIterator(&session);
+            frameIterator.RunToSessionState(XR_SESSION_STATE_READY);
+
+            for (XrViewConfigurationType viewType : KnownViewTypes) {
+                CAPTURE(viewType);
+
+                // Is this enum valid, check against enabled extensions.
+                bool valid = IsViewConfigurationTypeEnumValid(viewType);
+
+                if (!IsViewConfigurationTypeEnumValid(viewType)) {
+                    INFO("Must not enumerate invalid view configuration type");
+                    CHECK_THAT(runtimeViewTypes, !Catch::Matchers::VectorContains(viewType));
+                }
+
+                // Skip this view config if it is supported, since we cannot test correct handling of unsupported values with it.
+                if (Catch::Matchers::VectorContains(viewType).match(runtimeViewTypes)) {
+                    continue;
+                }
+
+                XrSessionBeginInfo beginInfo{XR_TYPE_SESSION_BEGIN_INFO};
+                beginInfo.primaryViewConfigurationType = viewType;
+                XrResult result = xrBeginSession(session, &beginInfo);
+                REQUIRE_THAT(result, In<XrResult>({XR_ERROR_VALIDATION_FAILURE, XR_ERROR_VIEW_CONFIGURATION_TYPE_UNSUPPORTED}));
+                if (!valid && result == XR_ERROR_VIEW_CONFIGURATION_TYPE_UNSUPPORTED) {
+                    WARN(
+                        "On receiving an 'invalid' enum value "
+                        << viewType
+                        << ", the runtime returned as XR_ERROR_VIEW_CONFIGURATION_TYPE_UNSUPPORTED instead of XR_ERROR_VALIDATION_FAILURE, which may make it harder for apps to reason about the error.");
+                }
+                else if (valid && result == XR_ERROR_VALIDATION_FAILURE) {
+                    WARN(
+                        "On receiving a 'valid' but not supported enum value "
+                        << viewType
+                        << ", the runtime returned as XR_ERROR_VALIDATION_FAILURE instead of XR_ERROR_VIEW_CONFIGURATION_TYPE_UNSUPPORTED, which may make it harder for apps to reason about the error.");
+                }
             }
         }
 

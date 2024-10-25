@@ -1,0 +1,4 @@
+---
+- issue.2239.gl
+---
+- New test: Show a perceptively-smooth gradient in two swapchain formats or two layer types (projection vs quad), to do basic rendering verification. This primarily catches issues where non-linear textures are being interpreted as linear or vice-versa in a runtime's compositor.

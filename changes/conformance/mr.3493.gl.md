@@ -1,0 +1,1 @@
+- Fix: Update generated code to allow dash in interaction profile paths.

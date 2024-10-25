@@ -177,6 +177,65 @@ namespace
         }
     }
 
+    TEST_CASE("ValidateExpectedFeatures")
+    {
+        // Create and destroy an XrInstance with a particular apiVersion to validate that
+        // it is possible and supported.
+        auto validateOpenXRVersionSupported = [](XrVersion apiVersion) -> bool {
+            GlobalData& globalData = GetGlobalData();
+
+            XrInstanceCreateInfo createInfo{XR_TYPE_INSTANCE_CREATE_INFO};
+            createInfo.applicationInfo.applicationVersion = 1;
+            strcpy(createInfo.applicationInfo.applicationName, "conformance test");
+            createInfo.applicationInfo.apiVersion = apiVersion;
+            createInfo.enabledApiLayerCount = (uint32_t)globalData.enabledAPILayerNames.size();
+            createInfo.enabledApiLayerNames = globalData.enabledAPILayerNames.data();
+
+            StringVec extensions(globalData.enabledInstanceExtensionNames);
+            createInfo.enabledExtensionCount = (uint32_t)extensions.size();
+            createInfo.enabledExtensionNames = extensions.data();
+
+            if (globalData.requiredPlatformInstanceCreateStruct != nullptr) {
+                createInfo.next = globalData.requiredPlatformInstanceCreateStruct;
+            }
+
+            XrInstance instance{XR_NULL_HANDLE};
+            XrResult result = xrCreateInstance(&createInfo, &instance);
+            if (XR_FAILED(result)) {
+                return false;
+            }
+
+            xrDestroyInstance(instance);
+            return true;
+        };
+
+        SECTION("OpenXR 1.1")
+        {
+            GlobalData& globalData = GetGlobalData();
+
+            FeatureSet available;
+            globalData.PopulateVersionAndAvailableExtensions(available);
+
+            if (available.Get(FeatureBitIndex::BIT_XR_VERSION_1_1)) {
+                bool openxr1_1_supported = validateOpenXRVersionSupported(XR_API_VERSION_1_1);
+                bool openxr1_0_supported = validateOpenXRVersionSupported(XR_API_VERSION_1_0);
+                REQUIRE(openxr1_1_supported);
+
+                if (!available.Get(FeatureBitIndex::BIT_XR_KHR_locate_spaces)) {
+                    WARN(
+                        "Runtime supports OpenXR 1.1 but does not support XR_KHR_locate_spaces; this is not strictly required but is surprising.");
+                }
+                if (!available.Get(FeatureBitIndex::BIT_XR_KHR_maintenance1)) {
+                    WARN(
+                        "Runtime supports OpenXR 1.1 but does not support XR_KHR_maintenance1; this is not strictly required but is surprising.");
+                }
+                if (!openxr1_0_supported) {
+                    WARN("Runtime supports OpenXR 1.1 but does not support OpenXR 1.0; this is not strictly required but is surprising.");
+                }
+            }
+        }
+    }
+
     // Ensure conformance is configured correctly.
     TEST_CASE("ValidateEnvironment")
     {
@@ -339,6 +398,8 @@ namespace
             globalData.options.viewConfiguration = arg;
             if (striequal(globalData.options.viewConfiguration.c_str(), "stereo"))
                 globalData.options.viewConfigurationValue = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+            else if (striequal(globalData.options.viewConfiguration.c_str(), "stereoFoveated"))
+                globalData.options.viewConfigurationValue = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO_WITH_FOVEATED_INSET;
             else if (striequal(globalData.options.viewConfiguration.c_str(), "mono"))
                 globalData.options.viewConfigurationValue = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_MONO;
             else {
@@ -410,8 +471,8 @@ namespace
               ("Choose which hands to test: left, right, or both. Default is both.")
                   .optional()
 
-            | Opt(parseViewConfig, "Stereo|Mono")  // view configuration
-                  ["-V"]["--viewConfiguration"]    //
+            | Opt(parseViewConfig, "Stereo|StereoFoveated|Mono")  // view configuration
+                  ["-V"]["--viewConfiguration"]                   //
               ("Specify view configuration. Default is Stereo.")
                   .optional()
 
@@ -519,8 +580,8 @@ namespace
             Base::testCaseEnded(testCaseStats);
 
             Conformance::GlobalData& globalData = Conformance::GetGlobalData();
-            globalData.conformanceReport.testSuccessCount += testCaseStats.totals.testCases.passed;
-            globalData.conformanceReport.testFailureCount += testCaseStats.totals.testCases.failed;
+            globalData.conformanceReport.results[testCaseStats.testInfo->name].testSuccessCount += testCaseStats.totals.testCases.passed;
+            globalData.conformanceReport.results[testCaseStats.testInfo->name].testFailureCount += testCaseStats.totals.testCases.failed;
         }
 
         void sectionStarting(Catch::SectionInfo const& sectionInfo) override
@@ -547,10 +608,10 @@ namespace
             m_sectionIndent--;
         }
 
-        void noMatchingTestCases(Catch::StringRef /* unmatchedSpec */) override
+        void noMatchingTestCases(Catch::StringRef unmatchedSpec) override
         {
             Conformance::GlobalData& globalData = Conformance::GetGlobalData();
-            globalData.conformanceReport.unmatchedTestSpecs = true;
+            globalData.conformanceReport.unmatchedTestSpecs.push_back(unmatchedSpec.data());
         }
 
         void testRunEnded(Catch::TestRunStats const& testRunStats) override
@@ -704,7 +765,7 @@ XrcResult XRAPI_CALL xrcRunConformanceTests(const ConformanceLaunchSettings* con
             int exitCode = CreateOrGetCatchSession().run();
 
             Conformance::GlobalData& globalData = Conformance::GetGlobalData();
-            *failureCount = globalData.conformanceReport.testFailureCount;
+            *failureCount = globalData.conformanceReport.TestFailureCount();
             const auto& totals = globalData.conformanceReport.totals;
             conformanceTestsRun = true;
 
@@ -712,7 +773,7 @@ XrcResult XRAPI_CALL xrcRunConformanceTests(const ConformanceLaunchSettings* con
             if (skipActuallyTesting) {
                 *testResult = XRC_TEST_RESULT_SUCCESS;
             }
-            else if (globalData.conformanceReport.unmatchedTestSpecs && catchConfig.warnAboutUnmatchedTestSpecs()) {
+            else if (!globalData.conformanceReport.unmatchedTestSpecs.empty() && catchConfig.warnAboutUnmatchedTestSpecs()) {
                 *testResult = XRC_TEST_RESULT_UNMATCHED_TEST_SPEC;
             }
             else if (totals.testCases.total() == 0 && !catchConfig.zeroTestsCountAsSuccess()) {
