@@ -351,7 +351,7 @@ ASCIIDOCTOR_TARGETS += $(PDFSPEC) $(PDFA4SPEC)
 
 # Target-specific variables and deps customizing the AsciiDoctor rule
 # EXTRAATRIBS is for build-time customization
-$(PDFSPEC) $(PDFA4SPEC): BACKEND_ARGS=--backend pdf --require asciidoctor-pdf -a compress --require ./scripts/pdf-index-customizer.rb $(EXTRAATTRIBS) 
+$(PDFSPEC) $(PDFA4SPEC): BACKEND_ARGS=--backend pdf --require asciidoctor-pdf -a compress --require ./scripts/pdf-index-customizer.rb $(EXTRAATTRIBS)
 $(PDFSPEC): PAGESIZE=LETTER
 $(PDFA4SPEC): PAGESIZE=A4
 $(PDFSPEC) $(PDFA4SPEC): $(COMMONDOCS)

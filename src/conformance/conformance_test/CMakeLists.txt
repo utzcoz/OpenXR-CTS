@@ -41,6 +41,11 @@ file(
 )
 file(GLOB VULKAN_SHADERS "vulkan_shaders/*.glsl")
 
+configure_file(
+    conformance_test_layer.json
+    ${CMAKE_CURRENT_BINARY_DIR}/XrApiLayer_conformance_test_layer.json @ONLY
+)
+
 # Check to see if git-lfs is working right
 file(STRINGS gltf_examples/VertexColorTest.glb LFS_CHECK_STRINGS)
 if(LFS_CHECK_STRINGS MATCHES "https://git-lfs[.]github[.]com/spec/v1")
@@ -153,6 +158,38 @@ if(ANDROID)
     )
 endif()
 
+# Dynamic Library:
+#  - Make build depend on the module definition/version script/export map
+#  - Add the linker flag (except windows)
+if(WIN32)
+    target_sources(
+        conformance_test
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/conformance_test.def"
+    )
+elseif(APPLE)
+    set_target_properties(
+        conformance_test
+        PROPERTIES
+            LINK_FLAGS
+            "-Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/conformance_test.expsym"
+    )
+    target_sources(
+        conformance_test
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/conformance_test.expsym"
+    )
+else()
+    set_target_properties(
+        conformance_test
+        PROPERTIES
+            LINK_FLAGS
+            "-Wl,--version-script=\"${CMAKE_CURRENT_SOURCE_DIR}/conformance_test.map\""
+    )
+    target_sources(
+        conformance_test
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/conformance_test.map"
+    )
+endif()
+
 if(BUILD_CONFORMANCE_CLI)
     # Copy conformance_test assets files to the conformance_cli binary folder
     foreach(ASSET ${ASSETS})
@@ -172,6 +209,16 @@ if(BUILD_CONFORMANCE_CLI)
         POST_BUILD
         COMMAND
             ${CMAKE_COMMAND} -E copy $<TARGET_FILE:conformance_test>
+            $<TARGET_PROPERTY:conformance_cli,BINARY_DIR>
+    )
+
+    # Copy test layer files to conformance_cli binary folder
+    add_custom_command(
+        TARGET conformance_test
+        POST_BUILD
+        COMMAND
+            ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/XrApiLayer_conformance_test_layer.json
             $<TARGET_PROPERTY:conformance_cli,BINARY_DIR>
     )
 endif()

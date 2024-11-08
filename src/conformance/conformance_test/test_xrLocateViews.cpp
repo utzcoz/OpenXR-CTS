@@ -171,6 +171,13 @@ namespace Conformance
                     else {
                         // Not a supported type, so call should fail, regardless of the array size.
                         INFO("Calling xrLocateViews with the noted viewType, which is claimed to be not supported");
+
+                        // Start the session with the default view config, so we get a reasonable display time.
+                        viewConfigDependentSetup(globalData.GetOptions().viewConfigurationValue);
+
+                        // but use our not-supported view config type for xrLocateViews
+                        locateInfo.viewConfigurationType = viewType;
+
                         uint32_t viewCount = static_cast<uint32_t>(session.viewConfigurationViewVector.size());
                         uint32_t viewCountOut = 0;
                         std::vector<XrView> views(viewCount, {XR_TYPE_VIEW});

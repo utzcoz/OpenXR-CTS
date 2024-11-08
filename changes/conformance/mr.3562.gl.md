@@ -1,1 +1,0 @@
-- Fix: Internal cross-references in the "Submission Package" section of the Usage document.

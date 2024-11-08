@@ -1,4 +1,0 @@
----
-- issue.2350.gl
----
-- Fix: Include interaction profile dependencies in generated binding path dependencies.

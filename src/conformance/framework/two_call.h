@@ -83,7 +83,7 @@ namespace Conformance
                     catchAssertionHandler.handleExpr(Catch::ExprLhs<XrResult>(XR_SUCCESS) == result);
                 }
                 INTERNAL_CATCH_CATCH(catchAssertionHandler)
-                INTERNAL_CATCH_REACT(catchAssertionHandler)
+                catchAssertionHandler.complete();
             }
 
             if (Catch::getResultCapture().lastAssertionPassed() && count > 0) {
@@ -110,7 +110,7 @@ namespace Conformance
                     }
                 }
                 INTERNAL_CATCH_CATCH(catchAssertionHandler)
-                INTERNAL_CATCH_REACT(catchAssertionHandler)
+                catchAssertionHandler.complete();
             }
             return ret;
         }

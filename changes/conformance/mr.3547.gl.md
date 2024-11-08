@@ -1,1 +1,0 @@
-- Fix: remove unused `functionPtr` field in global `FunctionInfoMap` as it is invalid if called with a different instance

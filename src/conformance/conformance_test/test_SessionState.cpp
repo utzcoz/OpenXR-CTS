@@ -105,48 +105,195 @@ namespace Conformance
             REQUIRE(session != XR_NULL_HANDLE_CPP);
 
             XrEventDataSessionStateChanged evt{};
-            REQUIRE(waitForNextSessionState(instance, &evt) == true);
-            REQUIRE_MSG(evt.state == XR_SESSION_STATE_IDLE, "Unexpected session state " << evt.state);
-
-            REQUIRE(waitForNextSessionState(instance, &evt) == true);
-            REQUIRE_MSG(evt.state == XR_SESSION_STATE_READY, "Unexpected session state " << evt.state);
-
             XrSessionBeginInfo beginInfo{XR_TYPE_SESSION_BEGIN_INFO};
             beginInfo.primaryViewConfigurationType = GetGlobalData().GetOptions().viewConfigurationValue;
-            REQUIRE(XR_SUCCESS == xrBeginSession(session, &beginInfo));
 
-            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_SYNCHRONIZED);
-            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_VISIBLE);
-            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_FOCUSED);
+            SECTION("Normal operation")
+            {
+                {
+                    INFO("Advancing to IDLE");
+                    REQUIRE(waitForNextSessionState(instance, &evt) == true);
+                    REQUIRE(evt.state == XR_SESSION_STATE_IDLE);
+                }
 
-            // Runtime should only allow ending a session in the STOPPING state.
-            REQUIRE(XR_ERROR_SESSION_NOT_STOPPING == xrEndSession(session));
+                {
+                    INFO("Advancing to READY");
+                    REQUIRE(waitForNextSessionState(instance, &evt) == true);
+                    REQUIRE(evt.state == XR_SESSION_STATE_READY);
+                }
 
-            REQUIRE(XR_SUCCESS == xrRequestExitSession(session));
+                REQUIRE(XR_SUCCESS == xrBeginSession(session, &beginInfo));
 
-            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_VISIBLE);
-            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_SYNCHRONIZED);
-            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_STOPPING);
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_SYNCHRONIZED);
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_VISIBLE);
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_FOCUSED);
 
-            // Runtime should not transition from STOPPING to IDLE until the session has been ended.
-            // This will wait 1 second before assuming no such incorrect event will come.
-            REQUIRE_MSG(waitForNextSessionState(instance, &evt) == false, "Premature progression from STOPPING to IDLE state");
+                // Runtime should only allow ending a session in the STOPPING state.
+                REQUIRE(XR_ERROR_SESSION_NOT_STOPPING == xrEndSession(session));
 
-            REQUIRE(XR_SUCCESS == xrEndSession(session));
+                REQUIRE(XR_SUCCESS == xrRequestExitSession(session));
 
-            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_IDLE);
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_VISIBLE);
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_SYNCHRONIZED);
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_STOPPING);
 
-            // https://registry.khronos.org/OpenXR/specs/1.1/html/xrspec.html#session-lifecycle
-            // If the runtime determines that its use of this XR session has
-            // concluded, it will transition the session state from
-            // XR_SESSION_STATE_IDLE to XR_SESSION_STATE_EXITING.
-            submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_EXITING);
+                // Runtime should not transition from STOPPING to IDLE until the session has been ended.
+                // This will wait 1 second before assuming no such incorrect event will come.
+                REQUIRE_MSG(waitForNextSessionState(instance, &evt) == false, "Premature progression from STOPPING to IDLE state");
 
-            // When the application receives the XR_SESSION_STATE_EXITING
-            // event, it releases the resources related to the session and
-            // calls xrDestroySession.
+                REQUIRE(XR_SUCCESS == xrEndSession(session));
+
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_IDLE);
+
+                // https://registry.khronos.org/OpenXR/specs/1.1/html/xrspec.html#session-lifecycle
+                // If the runtime determines that its use of this XR session has
+                // concluded, it will transition the session state from
+                // XR_SESSION_STATE_IDLE to XR_SESSION_STATE_EXITING.
+
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_EXITING);
+            }
+
+            SECTION("Try calls out of turn")
+            {
+
+                XrFrameState frameState{XR_TYPE_FRAME_STATE};
+
+                SECTION("xrWaitFrame before polling session state IDLE")
+                {
+                    INFO("xrWaitFrame only valid when session running");
+                    REQUIRE(XR_ERROR_SESSION_NOT_RUNNING == xrWaitFrame(session, nullptr, &frameState));
+                }
+
+                // We have not polled state IDLE yet, but the session may have already moved to that state.
+                // So, cannot assert anything about behaviour under various XrSessionState here:
+                // session might be in mystery unknown state before IDLE, IDLE, or READY.
+
+                INFO("Polling events until receiving IDLE");
+                REQUIRE(waitForNextSessionState(instance, &evt) == true);
+                REQUIRE(evt.state == XR_SESSION_STATE_IDLE);
+
+                SECTION("xrWaitFrame after polling session state IDLE")
+                {
+                    INFO("xrWaitFrame only valid when session running");
+                    CHECK(XR_ERROR_SESSION_NOT_RUNNING == xrWaitFrame(session, nullptr, &frameState));
+                }
+
+                // We have polled state IDLE but not READY yet. However,the session may have already moved to that state.
+                // So, cannot assert anything about behaviour under various XrSessionState here, since we may be in either
+                // IDLE or READY.
+
+                INFO("Polling events until receiving READY");
+                REQUIRE(waitForNextSessionState(instance, &evt) == true);
+                REQUIRE(evt.state == XR_SESSION_STATE_READY);
+
+                SECTION("xrWaitFrame in READY")
+                {
+                    INFO("xrWaitFrame only valid when session running");
+                    // If test hangs here, this is an error in the runtime!
+                    // It should not actually wait, but error out immediately.
+                    REQUIRE(xrWaitFrame(session, nullptr, &frameState) == XR_ERROR_SESSION_NOT_RUNNING);
+                }
+
+                INFO("xrBeginSession");
+                REQUIRE(XR_SUCCESS == xrBeginSession(session, &beginInfo));
+
+                if (GetGlobalData().IsUsingGraphicsPlugin()) {
+                    // Runtime should not transition from READY to SYNCHRONIZED until one or more frames have been submitted.
+                    // The exception is if the runtime is transitioning to STOPPING, which should not happen
+                    // during conformance testing. This will wait 1 second before assuming no such incorrect event will come.
+                    REQUIRE_MSG(waitForNextSessionState(instance, &evt) == false, "Premature progression from READY to SYNCHRONIZED state");
+                }
+                SECTION("Second call to xrBeginSession in READY")
+                {
+                    REQUIRE(XR_ERROR_SESSION_RUNNING == xrBeginSession(session, &beginInfo));
+                }
+
+                // READY -> SYNCHRONIZED
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_SYNCHRONIZED);
+                SECTION("xrBeginSession in SYNCHRONIZED")
+                {
+                    REQUIRE(XR_ERROR_SESSION_RUNNING == xrBeginSession(session, &beginInfo));
+                }
+
+                // SYNCHRONIZED -> VISIBLE
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_VISIBLE);
+                SECTION("xrBeginSession in VISIBLE")
+                {
+                    REQUIRE(XR_ERROR_SESSION_RUNNING == xrBeginSession(session, &beginInfo));
+                }
+
+                // VISIBLE -> FOCUSED
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_FOCUSED);
+                SECTION("xrBeginSession in FOCUSED")
+                {
+                    REQUIRE(XR_ERROR_SESSION_RUNNING == xrBeginSession(session, &beginInfo));
+                }
+
+                // Runtime should only allow ending a session in the STOPPING state.
+                SECTION("xrEndSession in FOCUSED")
+                {
+                    REQUIRE(XR_ERROR_SESSION_NOT_STOPPING == xrEndSession(session));
+                }
+
+                INFO("xrRequestExitSession");
+                REQUIRE(XR_SUCCESS == xrRequestExitSession(session));
+                SECTION("xrBeginSession in FOCUSED due to xrRequestExitSession")
+                {
+                    REQUIRE(XR_ERROR_SESSION_RUNNING == xrBeginSession(session, &beginInfo));
+                }
+
+                // FOCUSED -> VISIBLE
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_VISIBLE);
+                SECTION("xrBeginSession in VISIBLE due to xrRequestExitSession")
+                {
+                    REQUIRE(XR_ERROR_SESSION_RUNNING == xrBeginSession(session, &beginInfo));
+                }
+
+                // VISIBLE -> SYNCHRONIZED
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_SYNCHRONIZED);
+                SECTION("xrBeginSession in SYNCHRONIZED due to xrRequestExitSession")
+                {
+                    REQUIRE(XR_ERROR_SESSION_RUNNING == xrBeginSession(session, &beginInfo));
+                }
+
+                // SYNCHRONIZED -> STOPPING
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_STOPPING);
+                SECTION("xrBeginSession in STOPPING due to xrRequestExitSession")
+                {
+                    REQUIRE(XR_ERROR_SESSION_RUNNING == xrBeginSession(session, &beginInfo));
+                }
+
+                {
+                    INFO(
+                        "Runtime should not transition from STOPPING to IDLE until the session has been ended. Wait 1s for incorrect event.");
+                    // Runtime should not transition from STOPPING to IDLE until the session has been ended.
+                    // This will wait 1 second before assuming no such incorrect event will come.
+                    REQUIRE(waitForNextSessionState(instance, &evt) == false);
+                }
+
+                INFO("xrEndSession");
+                REQUIRE(XR_SUCCESS == xrEndSession(session));
+
+                SECTION("xrWaitFrame after xrEndSession but before IDLE")
+                {
+                    CHECK(XR_ERROR_SESSION_NOT_RUNNING == xrWaitFrame(session, nullptr, &frameState));
+                }
+
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_IDLE);
+
+                SECTION("xrWaitFrame in IDLE while shutting down")
+                {
+                    CHECK(XR_ERROR_SESSION_NOT_RUNNING == xrWaitFrame(session, nullptr, &frameState));
+                }
+
+                submitFramesUntilSessionState(instance, session, XR_SESSION_STATE_EXITING);
+
+                SECTION("xrWaitFrame in EXITING while shutting down")
+                {
+                    CHECK(XR_ERROR_SESSION_NOT_RUNNING == xrWaitFrame(session, nullptr, &frameState));
+                }
+            }
         }
-
         SECTION("xrRequestExitSession Session Not Running")
         {
             SECTION("Session not running before starting")
@@ -198,9 +345,11 @@ namespace Conformance
                 REQUIRE(XR_SUCCESS == xrBeginSession(session, &beginInfo));
 
                 // This will wait 1 second before assuming no such incorrect event will come.
+                INFO("When using graphics, must not move from READY to SYNCHRONIZED without submittting frames.");
                 XrEventDataSessionStateChanged evt;
-                REQUIRE_MSG(waitForNextSessionState(instance, &evt) == false, "Premature progression from READY to SYNCHRONIZED state");
+                REQUIRE(waitForNextSessionState(instance, &evt) == false);
             }
         }
     }
+
 }  // namespace Conformance

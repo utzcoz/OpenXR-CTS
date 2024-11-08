@@ -1,2 +1,0 @@
-- Improvement: Add command lines for Android for the self tests in the Usage document.
-- Fix: Correct an outdated description of the self tests in the Usage document, glTF files now load asynchronously in those tests.
