@@ -133,10 +133,44 @@ namespace Conformance
         AppendSprintf(reportString, "Handle invalidation tested: %s\n", globalData.options.invalidHandleValidation ? "yes" : "no");
         AppendSprintf(reportString, "Type invalidation tested: %s\n", globalData.options.invalidTypeValidation ? "yes" : "no");
         AppendSprintf(reportString, "Non-disconnectable devices: %s\n", globalData.options.nonDisconnectableDevices ? "yes" : "no");
-        AppendSprintf(reportString, "Test Success Count: %d\n", (int)testSuccessCount);
-        AppendSprintf(reportString, "Test Failure Count: %d\n", (int)testFailureCount);
+        AppendSprintf(reportString, "Test Success Count: %zu\n", TestSuccessCount());
+        AppendSprintf(reportString, "Test Failure Count: %zu\n", TestFailureCount());
+        if (TestFailureCount() > 0) {
+            AppendSprintf(reportString, "Tests with failures:\n");
+            for (auto const& pair : results) {
+                const auto& name = pair.first;
+                const auto& score = pair.second;
+                if (score.testFailureCount > 0) {
+                    AppendSprintf(reportString, "    %s\n", name.c_str());
+                }
+            }
+        }
+        if (!unmatchedTestSpecs.empty()) {
+            AppendSprintf(reportString, "Unmatched Test Specs:\n");
+            for (auto const& spec : unmatchedTestSpecs) {
+                AppendSprintf(reportString, "    %s\n", spec.c_str());
+            }
+        }
 
         return reportString;
+    }
+
+    uint64_t ConformanceReport::TestSuccessCount() const
+    {
+        uint64_t success{};
+        for (auto const& pair : results) {
+            success += pair.second.testSuccessCount;
+        }
+        return success;
+    }
+
+    uint64_t ConformanceReport::TestFailureCount() const
+    {
+        uint64_t failure{};
+        for (auto const& pair : results) {
+            failure += pair.second.testFailureCount;
+        }
+        return failure;
     }
 
     bool GlobalData::Initialize()
@@ -300,49 +334,6 @@ namespace Conformance
                     globalData.enabledInstanceExtensionNames.push_back_unique(extension);
                 }
             }
-        }
-        // Fill out the functions in functionInfoMap.
-        // Keep trying all functions, only failing out at end if one of them failed.
-        bool functionMapInitialized = true;
-        const FunctionInfoMap& functionInfoMap = GetFunctionInfoMap();
-        for (auto& functionInfo : functionInfoMap) {
-            // We need to poke the address pointer into map entries.
-            result = xrGetInstanceProcAddr(autoInstance, functionInfo.first.c_str(),
-                                           &const_cast<FunctionInfo&>(functionInfo.second).functionPtr);
-
-            if (XR_SUCCEEDED(result)) {
-                // This doesn't actually prove the pointer is correct. However, we will exercise that later.
-                if (functionInfo.second.functionPtr == nullptr) {
-                    ReportF("GlobalData::Initialize: xrGetInstanceProcAddr for '%s' failed to return valid addr.",
-                            functionInfo.first.c_str());
-                    functionMapInitialized = false;
-                }
-            }
-            else {
-                if (!ValidateResultAllowed("xrGetInstanceProcAddr", result)) {
-                    ReportF("GlobalData::Initialize: xrGetInstanceProcAddr for '%s' returned invalid XrResult.",
-                            functionInfo.first.c_str());
-                    functionMapInitialized = false;
-                }
-
-                // If we could not get a pointer to this function, then it should be because we didn't
-                // enable the extension required by the function.
-                if (result != XR_ERROR_FUNCTION_UNSUPPORTED) {
-                    ReportF("GlobalData::Initialize: xrGetInstanceProcAddr for '%s' failed with result: %s.", functionInfo.first.c_str(),
-                            ResultToString(result));
-                    functionMapInitialized = false;
-                }
-
-                // At this point, result is XR_ERROR_FUNCTION_UNSUPPORTED.
-                // Verify that the extension was *not* enabled.
-                // functionInfo.second.requiredExtension
-                // To do.
-            }
-        }
-
-        if (!functionMapInitialized) {
-            ReportF("GlobalData::Initialize: xrGetInstanceProcAddr failed for one or more functions.");
-            return false;
         }
 
         // Find XrSystemId (for later use and to ensure device is connected/available for whatever that means in a given runtime)

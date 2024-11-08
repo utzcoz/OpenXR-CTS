@@ -7,10 +7,10 @@
 
 The submission package **must** include each of the following:
 
-. <<submission-package-xml>>
+. <<submissions-package-xml>>
 . The console output produced by the CTS runs above.
-. <<submission-package-build-info>>
-. <<submission-package-conformance-statement>>
+. <<submissions-package-build-info>>
+. <<submissions-package-conformance-statement>>
 
 When you submit for OpenXR 1.1 conformance, you **must** also submit for
 each earlier OpenXR minor version that your runtime supports in the same
@@ -95,15 +95,14 @@ Can we drop this requirement?
 ====
 
 Each test suite run starts by printing test configuration data, and ends by
-printing a ``Report'' showing details of the runtime and environment
+printing a "Report" showing details of the runtime and environment
 (extensions, etc) used in that run.
 A few tests produce console output in-between that does not show up in the
 result XML.
 It is important to have this data for the interpretation of the results.
 
 [[submissions-package-build-info]]
-=== Information on the build of conformance used in generating the
-results
+=== Information on the build of conformance used in generating the results
 
 Files containing the result of the commands `git status` and `git log` from
 the CTS directory:

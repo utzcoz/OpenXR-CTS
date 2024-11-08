@@ -95,28 +95,43 @@ namespace Conformance
                 float maxDepth;
                 float nearZ;
                 float farZ;
+                XrResult result;
             };
 
             constexpr float minimum_useful_z = 0.01f;
             std::vector<SpaceWarpVaryingInfo> varyingInfoTestArray{
-                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, minimum_useful_z, 100.0f},
-                SpaceWarpVaryingInfo{0, 0.5f, 0.6f, minimum_useful_z, 100.0f},
-                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, minimum_useful_z, std::numeric_limits<float>::infinity()},
-                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, 100.0f, minimum_useful_z},
-                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, std::numeric_limits<float>::infinity(), minimum_useful_z},
-                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, std::numeric_limits<float>::max(), minimum_useful_z},
-                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, std::numeric_limits<float>::max(), minimum_useful_z},
-                SpaceWarpVaryingInfo{XR_COMPOSITION_LAYER_SPACE_WARP_INFO_FRAME_SKIP_BIT_FB, 0.0f, 1.0f, minimum_useful_z, 100.0f},
-                SpaceWarpVaryingInfo{XR_COMPOSITION_LAYER_SPACE_WARP_INFO_FRAME_SKIP_BIT_FB, 0.5f, 0.6f, minimum_useful_z, 100.0f},
+                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, minimum_useful_z, 100.0f, XR_SUCCESS},
+                SpaceWarpVaryingInfo{0, 0.5f, 0.6f, minimum_useful_z, 100.0f, XR_SUCCESS},
+                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, minimum_useful_z, std::numeric_limits<float>::infinity(), XR_SUCCESS},
+                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, 100.0f, minimum_useful_z, XR_SUCCESS},
+                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, std::numeric_limits<float>::infinity(), minimum_useful_z, XR_SUCCESS},
+                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, std::numeric_limits<float>::max(), minimum_useful_z, XR_SUCCESS},
+                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, std::numeric_limits<float>::max(), minimum_useful_z, XR_SUCCESS},
+                SpaceWarpVaryingInfo{XR_COMPOSITION_LAYER_SPACE_WARP_INFO_FRAME_SKIP_BIT_FB, 0.0f, 1.0f, minimum_useful_z, 100.0f,
+                                     XR_SUCCESS},
+                SpaceWarpVaryingInfo{XR_COMPOSITION_LAYER_SPACE_WARP_INFO_FRAME_SKIP_BIT_FB, 0.5f, 0.6f, minimum_useful_z, 100.0f,
+                                     XR_SUCCESS},
                 SpaceWarpVaryingInfo{XR_COMPOSITION_LAYER_SPACE_WARP_INFO_FRAME_SKIP_BIT_FB, 0.0f, 1.0f, minimum_useful_z,
-                                     std::numeric_limits<float>::infinity()},
-                SpaceWarpVaryingInfo{XR_COMPOSITION_LAYER_SPACE_WARP_INFO_FRAME_SKIP_BIT_FB, 0.0f, 1.0f, 100.0f, minimum_useful_z},
+                                     std::numeric_limits<float>::infinity(), XR_SUCCESS},
+                SpaceWarpVaryingInfo{XR_COMPOSITION_LAYER_SPACE_WARP_INFO_FRAME_SKIP_BIT_FB, 0.0f, 1.0f, 100.0f, minimum_useful_z,
+                                     XR_SUCCESS},
                 SpaceWarpVaryingInfo{XR_COMPOSITION_LAYER_SPACE_WARP_INFO_FRAME_SKIP_BIT_FB, 0.0f, 1.0f,
-                                     std::numeric_limits<float>::infinity(), minimum_useful_z},
+                                     std::numeric_limits<float>::infinity(), minimum_useful_z, XR_SUCCESS},
                 SpaceWarpVaryingInfo{XR_COMPOSITION_LAYER_SPACE_WARP_INFO_FRAME_SKIP_BIT_FB, 0.0f, 1.0f, std::numeric_limits<float>::max(),
-                                     minimum_useful_z},
+                                     minimum_useful_z, XR_SUCCESS},
                 SpaceWarpVaryingInfo{XR_COMPOSITION_LAYER_SPACE_WARP_INFO_FRAME_SKIP_BIT_FB, 0.0f, 1.0f, std::numeric_limits<float>::max(),
-                                     minimum_useful_z}};
+                                     minimum_useful_z, XR_SUCCESS},
+                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, minimum_useful_z, minimum_useful_z, XR_ERROR_VALIDATION_FAILURE},
+                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, 100.0f, 100.0f, XR_ERROR_VALIDATION_FAILURE},
+                SpaceWarpVaryingInfo{0, 0.0f, 1.0f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
+                                     XR_ERROR_VALIDATION_FAILURE},
+                SpaceWarpVaryingInfo{XR_COMPOSITION_LAYER_SPACE_WARP_INFO_FRAME_SKIP_BIT_FB, 0.0f, 1.0f, minimum_useful_z, minimum_useful_z,
+                                     XR_ERROR_VALIDATION_FAILURE},
+                SpaceWarpVaryingInfo{XR_COMPOSITION_LAYER_SPACE_WARP_INFO_FRAME_SKIP_BIT_FB, 0.0f, 1.0f, 100.0f, 100.0f,
+                                     XR_ERROR_VALIDATION_FAILURE},
+                SpaceWarpVaryingInfo{XR_COMPOSITION_LAYER_SPACE_WARP_INFO_FRAME_SKIP_BIT_FB, 0.0f, 1.0f,
+                                     std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
+                                     XR_ERROR_VALIDATION_FAILURE}};
 
             for (const SpaceWarpVaryingInfo& varyingInfo : varyingInfoTestArray) {
                 REQUIRE(frameIterator.PrepareSubmitFrame() == FrameIterator::RunResult::Success);
@@ -160,7 +175,7 @@ namespace Conformance
                 // xrEndFrame requires the XR_FB_space_warp extension to be
                 // enabled or else it must return XR_ERROR_LAYER_INVALID.
                 XrResult result = xrEndFrame(session.GetSession(), &frameIterator.frameEndInfo);
-                CHECK(result == XR_SUCCESS);
+                CHECK(result == varyingInfo.result);
             }
         }
 

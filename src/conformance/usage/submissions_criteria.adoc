@@ -33,14 +33,14 @@ or
 
 [source,xml]
 ----
-<failure message="" type="">
+<failure message="..." type="...">
 ----
 
 or
 
 [source,xml]
 ----
-<error message="" type="">
+<error message="..." type="...">
 ----
 
 With the results of the entire run summarized in `testsuite` tag (listing
@@ -59,8 +59,11 @@ the number of top level test cases):
 <cts:results testSuccessCount="1" testFailureCount="0"/>
 ----
 
-**Any error or failure when testing core or KHR extension functionality
-means your runtime is not conformant.**
+[IMPORTANT]
+====
+Any error or failure when testing **core or KHR extension** functionality
+means your runtime is **not conformant**.
 
 Any warnings **may** indicate non-conformance and **must** be explained in
 the submission package.
+====

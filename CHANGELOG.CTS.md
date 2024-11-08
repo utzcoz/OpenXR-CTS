@@ -17,6 +17,107 @@ particular, since it is primarily software, pull requests may be integrated as
 they are accepted even between periodic updates. However, versions that are not
 signed tags on the `approved` branch are not valid for conformance submission.
 
+## OpenXR CTS 1.1.42.0 (2024-11-07)
+
+This release, like the previous one, has a separate "Usage Guide" document with
+instructions and command lines, instead of a complex README. See the previous
+release notes for more info.
+
+There is one known issue in this release, but it only affects the self-tests
+(not required for conformance) under OpenGL. Passing `exclude:[self_test]` when
+running interactive tests with OpenGL will work around the issue. A fix is known
+and in review, expected by next release.
+
+- Conformance Tests
+  - Fix: Update generated code to allow `-` in interaction profile paths.
+    ([internal MR 3493](https://gitlab.khronos.org/openxr/openxr/merge_requests/3493))
+  - Fix: Allow interaction profiles which do not expose boolean paths to be tested.
+    ([internal MR 3506](https://gitlab.khronos.org/openxr/openxr/merge_requests/3506))
+  - Fix: Include interaction profile dependencies in generated binding path
+    dependencies.
+    ([internal MR 3507](https://gitlab.khronos.org/openxr/openxr/merge_requests/3507),
+    [internal issue 2350](https://gitlab.khronos.org/openxr/openxr/issues/2350))
+  - Fix: Correctly parse and process interaction profile path and binding path
+    dependencies from XML, and clean up code in `interaction_profile_processor.py`.
+    ([internal MR 3507](https://gitlab.khronos.org/openxr/openxr/merge_requests/3507),
+    [internal MR 3521](https://gitlab.khronos.org/openxr/openxr/merge_requests/3521))
+  - Fix: Add missing XML description of `EXT_hand_interaction` additions to several
+    interaction profiles, affecting generated interaction profile tests.
+    ([internal MR 3517](https://gitlab.khronos.org/openxr/openxr/merge_requests/3517),
+    [internal MR 3541](https://gitlab.khronos.org/openxr/openxr/merge_requests/3541),
+    [internal MR 3544](https://gitlab.khronos.org/openxr/openxr/merge_requests/3544))
+  - Fix: remove unused `functionPtr` field in global `FunctionInfoMap` as it is
+    invalid if called with a different instance.
+    ([internal MR 3547](https://gitlab.khronos.org/openxr/openxr/merge_requests/3547))
+  - Fix: Correct an outdated description of the self tests in the Usage document:
+    glTF files now load asynchronously in those tests.
+    ([internal MR 3553](https://gitlab.khronos.org/openxr/openxr/merge_requests/3553))
+  - Fix: Internal cross-references in the "Submission Package" section of the Usage
+    document.
+    ([internal MR 3562](https://gitlab.khronos.org/openxr/openxr/merge_requests/3562))
+  - Improvement: Update `stb_image` from 2.27 to 2.30 (latest upstream) for fixes,
+    security improvements, and optimizations.
+    ([internal MR 2578](https://gitlab.khronos.org/openxr/openxr/merge_requests/2578))
+  - Improvement: Update `stb_typetype` to latest upstream for float comparison
+    fixes.
+    ([internal MR 2578](https://gitlab.khronos.org/openxr/openxr/merge_requests/2578))
+  - Improvement: Update Catch2 from v3.3.2 to v3.7.1, including our custom fork of
+    the jUnit reporter. Provides build-time and runtime performance improvements,
+    among other changes.
+    ([internal MR 2893](https://gitlab.khronos.org/openxr/openxr/merge_requests/2893))
+  - Improvement: Reorganize session state tests and use test sections, annotating
+    assertions with spec links.
+    ([internal MR 3017](https://gitlab.khronos.org/openxr/openxr/merge_requests/3017),
+    [internal MR 3468](https://gitlab.khronos.org/openxr/openxr/merge_requests/3468))
+  - Improvement: Update tinygltf to version 2.9.3.
+    ([internal MR 3366](https://gitlab.khronos.org/openxr/openxr/merge_requests/3366))
+  - Improvement: List failed test cases, and unmatched test specs, at end of CTS
+    run.
+    ([internal MR 3489](https://gitlab.khronos.org/openxr/openxr/merge_requests/3489))
+  - Improvement: Add warnings if supporting OpenXR 1.1 but not supporting optional,
+    but recommended, extensions providing compatibility for OpenXR 1.0
+    apps/engines.
+    ([internal MR 3499](https://gitlab.khronos.org/openxr/openxr/merge_requests/3499))
+  - Improvement: Make generated interaction profile sources
+    reproducible/deterministic.
+    ([internal MR 3507](https://gitlab.khronos.org/openxr/openxr/merge_requests/3507))
+  - Improvement: Correct the build-time dependencies of the generated interaction
+    profile data.
+    ([internal MR 3521](https://gitlab.khronos.org/openxr/openxr/merge_requests/3521))
+  - Improvement: Note in the Usage document that
+    `/interaction_profiles/ext/hand_interaction_ext` and
+    `/interaction_profiles/ext/eye_gaze_interaction` are generic interaction
+    profiles that should be tested if supported.
+    ([internal MR 3524](https://gitlab.khronos.org/openxr/openxr/merge_requests/3524),
+    [internal MR 3506](https://gitlab.khronos.org/openxr/openxr/merge_requests/3506))
+  - Improvement: Added support for `PRIMARY_STEREO_WITH_FOVEATED_INSET` in
+    `xrLocateViews` tests.
+    ([internal MR 3527](https://gitlab.khronos.org/openxr/openxr/merge_requests/3527),
+    [internal MR 3571](https://gitlab.khronos.org/openxr/openxr/merge_requests/3571))
+  - Improvement: Add command lines for Android for the self tests in the Usage
+    document.
+    ([internal MR 3553](https://gitlab.khronos.org/openxr/openxr/merge_requests/3553))
+  - New test: Show a perceptively-smooth gradient in two swapchain formats or two
+    layer types (projection vs quad), to do basic rendering verification. This
+    primarily catches issues where non-linear textures are being interpreted as
+    linear or vice-versa in a runtime's compositor.
+    ([internal MR 3351](https://gitlab.khronos.org/openxr/openxr/merge_requests/3351),
+    [internal issue 2239](https://gitlab.khronos.org/openxr/openxr/issues/2239))
+  - New test: Check `xrCreateInstance` patterns required by API layers.
+    ([internal MR 3415](https://gitlab.khronos.org/openxr/openxr/merge_requests/3415),
+    [internal issue 2333](https://gitlab.khronos.org/openxr/openxr/issues/2333),
+    [OpenXR-CTS PR 94](https://github.com/KhronosGroup/OpenXR-CTS/pull/94))
+  - New test: Verify behavior when session state related calls occur out of order.
+    ([internal MR 3468](https://gitlab.khronos.org/openxr/openxr/merge_requests/3468),
+    [internal MR 3579](https://gitlab.khronos.org/openxr/openxr/merge_requests/3579))
+  - New test: When using `XR_FB_space_warp`, verify runtime returns
+    `XR_ERROR_VALIDATION_FAILURE` if `nearZ` is equal to `farZ`
+    ([internal MR 3523](https://gitlab.khronos.org/openxr/openxr/merge_requests/3523))
+  - New test: Add additional assertions for `xrGetInputSourceLocalizedName`, after
+    removing incorrect portions of the test.
+    ([internal MR 3534](https://gitlab.khronos.org/openxr/openxr/merge_requests/3534),
+    [internal MR 3559](https://gitlab.khronos.org/openxr/openxr/merge_requests/3559))
+
 ## OpenXR CTS 1.1.41.0 (2024-10-10)
 
 An important feature of this release is the new usage guide for the Conformance

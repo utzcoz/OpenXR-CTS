@@ -50,12 +50,16 @@ run_xr_xml_generate(
     ${PROJECT_SOURCE_DIR}/src/scripts/template_function_info.cpp
 )
 run_xr_xml_generate(
-    conformance_generator.py interaction_info_generated.cpp
+    conformance_generator.py
+    interaction_info_generated.cpp
     "${PROJECT_SOURCE_DIR}/src/scripts/template_interaction_info_generated.cpp"
+    "${PROJECT_SOURCE_DIR}/src/scripts/interaction_profile_processor.py"
 )
 run_xr_xml_generate(
-    conformance_generator.py interaction_info_generated.h
+    conformance_generator.py
+    interaction_info_generated.h
     "${PROJECT_SOURCE_DIR}/src/scripts/template_interaction_info_generated.h"
+    "${PROJECT_SOURCE_DIR}/src/scripts/interaction_profile_processor.py"
 )
 
 add_library(

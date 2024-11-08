@@ -582,15 +582,17 @@ namespace Conformance
         };
 
         /// If instance is valid then we inherit it instead of create one ourselves.
-        AutoBasicSession(int optionFlags = 0, XrInstance instance = XR_NULL_HANDLE);
+        AutoBasicSession(int optionFlags = 0, XrInstance instance = XR_NULL_HANDLE,
+                         XrViewConfigurationType viewConfigType_ = XR_VIEW_CONFIGURATION_TYPE_MAX_ENUM);
 
         /// Calls Shutdown if not shut down already.
         ~AutoBasicSession();
 
         /// If instance is valid then we inherit it instead of create one ourselves.
-        void Init(int optionFlags, XrInstance instance = XR_NULL_HANDLE);
+        void Init(int optionFlags, XrInstance instance = XR_NULL_HANDLE,
+                  XrViewConfigurationType viewConfigType_ = XR_VIEW_CONFIGURATION_TYPE_MAX_ENUM);
 
-        /// Begin the session.
+        /// Begin the session with specific view configuration type
         void BeginSession();
 
         /// Restores the class instance to a pre-initialized state.
@@ -666,9 +668,9 @@ namespace Conformance
         // Enumerated types.
         std::vector<int64_t> swapchainFormatVector;
         std::vector<XrReferenceSpaceType> spaceTypeVector;
-        std::vector<XrViewConfigurationType> viewConfigurationTypeVector;
         std::vector<XrViewConfigurationView> viewConfigurationViewVector;
         std::vector<XrEnvironmentBlendMode> environmentBlendModeVector;
+        XrViewConfigurationType viewConfigurationType{XR_VIEW_CONFIGURATION_TYPE_MAX_ENUM};
     };
 
     /// Output operator for the `XrSession` handle in a @ref AutoBasicSession
@@ -685,17 +687,13 @@ namespace Conformance
     /// Identifies conformance-related information about individual OpenXR functions.
     struct FunctionInfo
     {
-        PFN_xrVoidFunction functionPtr;
         bool nullInstanceOk;
         const char* requiredExtension;
         std::vector<XrResult> validResults;
 
-        FunctionInfo(PFN_xrVoidFunction functionPtr = nullptr, bool nullInstanceOk = false, const char* requiredExtension = nullptr,
+        FunctionInfo(bool nullInstanceOk = false, const char* requiredExtension = nullptr,
                      std::vector<XrResult> validResults = std::vector<XrResult>())
-            : functionPtr(functionPtr)
-            , nullInstanceOk(nullInstanceOk)
-            , requiredExtension(requiredExtension)
-            , validResults(std::move(validResults))
+            : nullInstanceOk(nullInstanceOk), requiredExtension(requiredExtension), validResults(std::move(validResults))
         {
         }
     };

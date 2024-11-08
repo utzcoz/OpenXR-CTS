@@ -13,7 +13,7 @@ static const FunctionInfoMap functionInfoMapInternal{
 //# for cur_cmd in sorted_cmds
 //# if cur_cmd.ext_name != "XR_LOADER_VERSION_1_0"
     {/*{ cur_cmd.name | quote_string }*/,
-     FunctionInfo(PFN_xrVoidFunction(nullptr),
+     FunctionInfo(
 //# if cur_cmd.name in null_instance_ok
      true, /* null instance OK */
 //# else

@@ -36,9 +36,9 @@ Comment: Based on a Material Icons asset ("emoji-people") with added text
   Rasterized with Android Studio.
 
 Files: src/external/catch2/*
-Copyright: Copyright (c) 2023 Two Blue Cubes Ltd.
+Copyright: Copyright Catch2 Authors
 License: BSL-1.0
-Comment: Unmodified, vendored copy of Catch2 v3.3.2
+Comment: Unmodified, vendored copy of Catch2 v3.7.1
 
 Files: src/external/jsoncpp/*
 Copyright: 2007-2010 Baptiste Lepilleur and The JsonCpp Authors
@@ -50,7 +50,7 @@ Files: src/external/tinygltf/README.md
   src/external/tinygltf/tiny_gltf.h
 Copyright: 2015-Present, Syoyo Fujita, Aurélien Chatelain and many contributors
 License: MIT
-Comment: Unmodified, vendored copy of a subset of the tiny-gltf repo v2.8.9
+Comment: Unmodified, vendored copy of a subset of the tiny-gltf repo v2.9.3
 
 Files: src/external/d3dx12/*
 Copyright: Copyright (c) Microsoft Corporation.

@@ -22,31 +22,66 @@
 
 namespace Conformance
 {
-    enum SwapchainFormatMutability
+    namespace SwapchainFormat
     {
-        IMMUTABLE,
-        MUTABLE,
-    };
-    enum SwapchainFormatSupportsMutability
-    {
-        NO_MUT_SUPPORT,
-        MUT_SUPPORT,
-    };
-    enum SwapchainFormatIsColor
-    {
-        NON_COLOR,
-        COLOR,
-    };
-    enum SwapchainFormatIsCompressed
-    {
-        UNCOMPRESSED,
-        COMPRESSED,
-    };
-    enum SwapchainFormatSupportsRendering
-    {
-        NO_RENDERING_SUPPORT,
-        RENDERING_SUPPORT,
-    };
+        namespace Flags
+        {
+            enum Mutability
+            {
+                IMMUTABLE,
+                MUTABLE,
+            };
+            enum SupportsMutability
+            {
+                NO_MUT_SUPPORT,
+                MUT_SUPPORT,
+            };
+            enum IsColor
+            {
+                NON_COLOR,
+                COLOR,
+            };
+            enum IsCompressed
+            {
+                UNCOMPRESSED,
+                COMPRESSED,
+            };
+            enum SupportsRendering
+            {
+                NO_RENDERING_SUPPORT,
+                RENDERING_SUPPORT,
+            };
+        }  // namespace Flags
+
+        /// The components defined by the texture during sampling
+        /// (i.e. not just returned as the default value)
+        enum RawColorComponents : uint8_t
+        {
+            Unknown = 0,
+            r = 1 << 0,
+            g = 1 << 1,
+            b = 1 << 2,
+            a = 1 << 3,
+        };
+
+        /// Textures whose output is interpreted as an integer
+        /// and not mapped to a fixed- or floating-point value.
+        /// This does not yet account for integer aspects of
+        /// non-color formats, but could be renamed and extended.
+        enum ColorIntegerRange
+        {
+            NoIntegerColor = 0,
+            u8,
+            s8,
+            u16,
+            s16,
+            u32,
+            s32,
+            uRGB10A2,
+        };
+        uint8_t ColorIntegerRangeBits(ColorIntegerRange colorIntegerRange);
+        bool ColorIntegerRangeIsSigned(ColorIntegerRange colorIntegerRange);
+    }  // namespace SwapchainFormat
 
     /// Defines XrSwapchainCreateInfo test parameters for a single given image format.
     /// Sometimes values are zeroed, for the case that use of them is invalid or unsupportable.
@@ -58,22 +93,28 @@ namespace Conformance
         std::string imageFormatName;
 
         /// Whether the image format is a mutable (a.k.a. typeless) type.
-        SwapchainFormatMutability mutableFormat;
+        SwapchainFormat::Flags::Mutability mutableFormat;
 
         /// Whether the image format supports creation with XR_SWAPCHAIN_USAGE_MUTABLE_FORMAT_BIT.
-        SwapchainFormatSupportsMutability supportsMutableFormat;
+        SwapchainFormat::Flags::SupportsMutability supportsMutableFormat;
 
         /// Whether the format is a color-specific format, as opposed to a depth-specific format.
-        SwapchainFormatIsColor colorFormat;
+        SwapchainFormat::Flags::IsColor colorFormat;
 
         /// Whether the format is a compressed format.
-        SwapchainFormatIsCompressed compressedFormat;
+        SwapchainFormat::Flags::IsCompressed compressedFormat;
 
         /// Whether the image format can be rendered to.
-        SwapchainFormatSupportsRendering supportsRendering;
+        SwapchainFormat::Flags::SupportsRendering supportsRendering;
 
         /// The graphics-specific created image format returned by xrCreateSwapchain, may be different from imageFormat in some cases.
         int64_t expectedCreatedImageFormat;
+
+        /// The color components that, when sampled, will not just be set to default values.
+        SwapchainFormat::RawColorComponents colorComponents;
+
+        /// For integer (not floating point or normalised) color images, the bit depth of each color/alpha component.
+        SwapchainFormat::ColorIntegerRange colorIntegerRange;
 
         /// XrSwapchainUsageFlags to exercise for this format.
         std::vector<uint64_t> usageFlagsVector;

@@ -85,7 +85,7 @@ reflow:
 
 ################################################
 # Meta builds for releases. Also copies into approximately the right layout for the OpenXR-Registry repo.
-REGISTRYOUTDIR = $(GENDIR)/out/registry-release/cts-usage
+REGISTRYOUTDIR := $(GENDIR)/out/registry-release/conformance
 
 $(REGISTRYOUTDIR)/cts_usage.pdf: $(CTSUSAGEPDF)
 	$(ECHO) "[hexapdf]     $(call MAKE_RELATIVE,$@)"

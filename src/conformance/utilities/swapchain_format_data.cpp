@@ -246,6 +246,13 @@ namespace Conformance
 
     SwapchainCreateTestParameters SwapchainFormatData::ToTestParameters() const
     {
+        if (!m_colorFormat && !m_depthFormat && !m_stencilFormat) {
+            std::ostringstream oss;
+            oss << "Format " << m_imageFormatName << " (" << to_hex(m_imageFormat) << ")"
+                << "has no known aspect (color, depth, stencil);"
+                   " if this is correct, code may need to be updated.";
+            throw std::logic_error(oss.str());
+        }
 
         span<const uint32_t> mipCountVector{kArrayOf1.begin(), kArrayOf1.end()};
         if (m_colorFormat && !m_compressedFormat) {
@@ -253,16 +260,17 @@ namespace Conformance
         }
 
         span<const uint32_t> arrayCountVector{kArrayOf1And2.begin(), kArrayOf1And2.end()};
+        namespace FormatFlags = SwapchainFormat::Flags;
         return SwapchainCreateTestParameters{
-            std::string{m_imageFormatName},                                                            //
-            m_isTypeless ? SwapchainFormatMutability::MUTABLE : SwapchainFormatMutability::IMMUTABLE,  //
-            m_supportsMutableFormat ? SwapchainFormatSupportsMutability::MUT_SUPPORT
-                                    : SwapchainFormatSupportsMutability::NO_MUT_SUPPORT,  //
-            m_colorFormat ? SwapchainFormatIsColor::COLOR : SwapchainFormatIsColor::NON_COLOR,
-            m_compressedFormat ? SwapchainFormatIsCompressed::COMPRESSED : SwapchainFormatIsCompressed::UNCOMPRESSED,
-            m_compressedFormat ? SwapchainFormatSupportsRendering::NO_RENDERING_SUPPORT
-                               : SwapchainFormatSupportsRendering::RENDERING_SUPPORT,
+            std::string{m_imageFormatName},                                                                                            //
+            m_isTypeless ? FormatFlags::Mutability::MUTABLE : FormatFlags::Mutability::IMMUTABLE,                                      //
+            m_supportsMutableFormat ? FormatFlags::SupportsMutability::MUT_SUPPORT : FormatFlags::SupportsMutability::NO_MUT_SUPPORT,  //
+            m_colorFormat ? FormatFlags::IsColor::COLOR : FormatFlags::IsColor::NON_COLOR,
+            m_compressedFormat ? FormatFlags::IsCompressed::COMPRESSED : FormatFlags::IsCompressed::UNCOMPRESSED,
+            m_compressedFormat ? FormatFlags::SupportsRendering::NO_RENDERING_SUPPORT : FormatFlags::SupportsRendering::RENDERING_SUPPORT,
             m_expectedCreatedImageFormat,
+            m_colorComponents,
+            m_integerRange,
             {m_usageFlagsVector.begin(), m_usageFlagsVector.end()},
             {m_createFlagsVector.begin(), m_createFlagsVector.end()},
             {arrayCountVector.begin(), arrayCountVector.end()},

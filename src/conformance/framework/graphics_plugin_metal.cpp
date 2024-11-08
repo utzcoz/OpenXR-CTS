@@ -427,76 +427,78 @@ namespace Conformance
     static const SwapchainFormatDataMap& GetSwapchainFormatData()
     {
 
+        using namespace SwapchainFormat;
+
         // Add SwapchainCreateTestParameters for other Vulkan formats if they are supported by a runtime
         static SwapchainFormatDataMap map{{
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA8Unorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA8Unorm_sRGB).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBGRA8Unorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBGRA8Unorm_sRGB).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA8Unorm).rgba().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA8Unorm_sRGB).rgba().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBGRA8Unorm).rgba().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBGRA8Unorm_sRGB).rgba().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG8Unorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG8Unorm_sRGB).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG8Unorm).rg().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG8Unorm_sRGB).rg().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR8Unorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR8Unorm_sRGB).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR8Unorm).r().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR8Unorm_sRGB).r().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR8Snorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG8Snorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA8Snorm).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR8Snorm).r().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG8Snorm).rg().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA8Snorm).rgba().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR8Uint).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG8Uint).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA8Uint).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR8Sint).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG8Sint).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA8Sint).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR8Uint).r().Int(ColorIntegerRange::u8).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG8Uint).rg().Int(ColorIntegerRange::u8).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA8Uint).rgba().Int(ColorIntegerRange::u8).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR8Sint).r().Int(ColorIntegerRange::s8).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG8Sint).rg().Int(ColorIntegerRange::s8).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA8Sint).rgba().Int(ColorIntegerRange::s8).ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR16Unorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG16Unorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA16Unorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR16Snorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG16Snorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA16Snorm).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR16Unorm).r().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG16Unorm).rg().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA16Unorm).rgba().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR16Snorm).r().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG16Snorm).rg().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA16Snorm).rgba().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR16Uint).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG16Uint).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA16Uint).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR16Uint).r().Int(ColorIntegerRange::u16).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG16Uint).rg().Int(ColorIntegerRange::u16).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA16Uint).rgba().Int(ColorIntegerRange::u16).ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR16Sint).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG16Sint).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA16Sint).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR16Sint).r().Int(ColorIntegerRange::s16).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG16Sint).rg().Int(ColorIntegerRange::s16).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA16Sint).rgba().Int(ColorIntegerRange::s16).ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR16Float).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG16Float).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA16Float).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR16Float).r().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG16Float).rg().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA16Float).rgba().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR32Sint).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG32Sint).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA32Sint).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR32Sint).r().Int(ColorIntegerRange::s32).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG32Sint).rg().Int(ColorIntegerRange::s32).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA32Sint).rgba().Int(ColorIntegerRange::s32).ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR32Uint).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG32Uint).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA32Uint).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR32Uint).r().Int(ColorIntegerRange::u32).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG32Uint).rg().Int(ColorIntegerRange::u32).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA32Uint).rgba().Int(ColorIntegerRange::u32).ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR32Float).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG32Float).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA32Float).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatR32Float).r().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG32Float).rg().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA32Float).rgba().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatB5G6R5Unorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatA1BGR5Unorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBGR5A1Unorm).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatB5G6R5Unorm).rgb().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatA1BGR5Unorm).rgba().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBGR5A1Unorm).rgba().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatABGR4Unorm).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatABGR4Unorm).rgba().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGB10A2Unorm).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBGR10A2Unorm).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGB10A2Unorm).rgba().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBGR10A2Unorm).rgba().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGB10A2Uint).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGB10A2Uint).rgba().Int(ColorIntegerRange::uRGB10A2).ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG11B10Float).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGB9E5Float).ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA16Float).ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRG11B10Float).rgb().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGB9E5Float).rgb().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatRGBA16Float).rgba().ToPair(),
 
             XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatDepth16Unorm).Depth().ToPair(),
             XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatDepth24Unorm_Stencil8).DepthStencil().ToPair(),
@@ -504,77 +506,77 @@ namespace Conformance
             XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatDepth32Float).Depth().ToPair(),
             XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatDepth32Float_Stencil8).DepthStencil().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatETC2_RGB8).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatETC2_RGB8A1).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatETC2_RGB8_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatETC2_RGB8A1_sRGB).Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatETC2_RGB8).rgb().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatETC2_RGB8A1).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatETC2_RGB8_sRGB).rgb().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatETC2_RGB8A1_sRGB).rgba().Compressed().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatEAC_R11Unorm).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatEAC_RG11Unorm).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatEAC_R11Snorm).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatEAC_RG11Snorm).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatEAC_RGBA8).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatEAC_RGBA8_sRGB).Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatEAC_R11Unorm).r().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatEAC_RG11Unorm).rg().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatEAC_R11Snorm).r().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatEAC_RG11Snorm).rg().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatEAC_RGBA8).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatEAC_RGBA8_sRGB).rgba().Compressed().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_4x4_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_5x4_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_5x5_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_6x5_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_6x6_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x5_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x6_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x8_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x5_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x6_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x10_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x10_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_12x10_sRGB).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_12x12_sRGB).Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_4x4_sRGB).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_5x4_sRGB).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_5x5_sRGB).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_6x5_sRGB).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_6x6_sRGB).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x5_sRGB).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x6_sRGB).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x8_sRGB).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x5_sRGB).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x6_sRGB).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x10_sRGB).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x10_sRGB).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_12x10_sRGB).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_12x12_sRGB).rgba().Compressed().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_4x4_LDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_5x4_LDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_5x5_LDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_6x5_LDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_6x6_LDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x5_LDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x6_LDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x8_LDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x5_LDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x6_LDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x10_LDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x10_LDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_12x10_LDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_12x12_LDR).Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_4x4_LDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_5x4_LDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_5x5_LDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_6x5_LDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_6x6_LDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x5_LDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x6_LDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x8_LDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x5_LDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x6_LDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x10_LDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x10_LDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_12x10_LDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_12x12_LDR).rgba().Compressed().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_4x4_HDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_5x4_HDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_5x5_HDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_6x5_HDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_6x6_HDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x5_HDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x6_HDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x8_HDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x5_HDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x6_HDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x10_HDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x10_HDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_12x10_HDR).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_12x12_HDR).Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_4x4_HDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_5x4_HDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_5x5_HDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_6x5_HDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_6x6_HDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x5_HDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x6_HDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_8x8_HDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x5_HDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x6_HDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x10_HDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_10x10_HDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_12x10_HDR).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatASTC_12x12_HDR).rgba().Compressed().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC1_RGBA).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC1_RGBA_sRGB).Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC1_RGBA).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC1_RGBA_sRGB).rgba().Compressed().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC2_RGBA).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC2_RGBA_sRGB).Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC2_RGBA).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC2_RGBA_sRGB).rgba().Compressed().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC3_RGBA).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC3_RGBA_sRGB).Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC3_RGBA).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC3_RGBA_sRGB).rgba().Compressed().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC6H_RGBFloat).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC6H_RGBUfloat).Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC6H_RGBFloat).rgb().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC6H_RGBUfloat).rgb().Compressed().ToPair(),
 
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC7_RGBAUnorm).Compressed().ToPair(),
-            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC7_RGBAUnorm_sRGB).Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC7_RGBAUnorm).rgba().Compressed().ToPair(),
+            XRC_SWAPCHAIN_FORMAT(MTL::PixelFormatBC7_RGBAUnorm_sRGB).rgba().Compressed().ToPair(),
         }};
         return map;
     }
@@ -941,36 +943,35 @@ namespace Conformance
         using NS::StringEncoding::UTF8StringEncoding;
 
         const char* shaderSrc = R"(
-            #include <metal_stdlib>
+#include <metal_stdlib>
             using namespace metal;
 
-            struct VertexBuffer {
-                float4 position;
-                float4 color;
-            };
+        struct VertexBuffer
+        {
+            float4 position;
+            float4 color;
+        };
 
-            struct v2f
-            {
-                float4 position [[position]];
-                half4 color;
-            };
+        struct v2f
+        {
+            float4 position [[position]];
+            half4 color;
+        };
 
-            v2f vertex vertexMain( uint vertexId [[vertex_id]],
-                                   uint instanceId [[instance_id]],
-                                   device const VertexBuffer* vertexBuffer [[buffer(0)]],
-                                   device const float4x4* matricesBuffer [[buffer(1)]] )
-            {
-                v2f o;
-                float4 pos = vertexBuffer[vertexId].position;
-                o.position = matricesBuffer[instanceId] * pos;
-                o.color = half4(vertexBuffer[vertexId].color);
-                return o;
-            }
+        v2f vertex vertexMain(uint vertexId [[vertex_id]], uint instanceId [[instance_id]],
+                              device const VertexBuffer* vertexBuffer [[buffer(0)]], device const float4x4* matricesBuffer [[buffer(1)]])
+        {
+            v2f o;
+            float4 pos = vertexBuffer[vertexId].position;
+            o.position = matricesBuffer[instanceId] * pos;
+            o.color = half4(vertexBuffer[vertexId].color);
+            return o;
+        }
 
-            half4 fragment fragmentMain( v2f in [[stage_in]] )
-            {
-                return in.color;
-            }
+        half4 fragment fragmentMain(v2f in [[stage_in]])
+        {
+            return in.color;
+        }
         )";
 
         NS::Error* pError = nullptr;

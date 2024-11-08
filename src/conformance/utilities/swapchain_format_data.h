@@ -30,7 +30,6 @@
 namespace Conformance
 {
     using nonstd::span;
-
     /// Minimal data structure storing details about a swapchain image format.
     ///
     /// May eventually replace @ref SwapchainImageTestParam
@@ -145,7 +144,10 @@ namespace Conformance
         bool m_supportsMutableFormat = true;
 
         /// Whether the format is a color-specific format
-        bool m_colorFormat = true;
+        bool m_colorFormat = false;
+
+        /// Which color components the format resolves to (including alpha)
+        SwapchainFormat::RawColorComponents m_colorComponents = SwapchainFormat::RawColorComponents::Unknown;
 
         /// Whether the format can be use as a depth buffer: implies not color
         bool m_depthFormat = false;
@@ -155,6 +157,9 @@ namespace Conformance
 
         /// Whether the format is a compressed format (and thus cannot be rendered to)
         bool m_compressedFormat = false;
+
+        /// The signed-ness and integer range of this format.
+        SwapchainFormat::ColorIntegerRange m_integerRange = SwapchainFormat::ColorIntegerRange::NoIntegerColor;
 
         /// XrSwapchainUsageFlags to exercise for this format.
         /// Defaults to all combinations, including 0, of the core flags.
@@ -188,6 +193,60 @@ namespace Conformance
 
         using Self = SwapchainCreateTestParametersBuilder;
 
+        /// Mark this as supporting color buffer usage with the channels/components @param components
+        ///
+        /// Also sets some default usage flags.
+        Self& Color(SwapchainFormat::RawColorComponents components)
+        {
+            m_data.m_colorFormat = true;
+            m_data.m_colorComponents = components;
+            UpdateDefaultUsageFlagVector();
+            return *this;
+        }
+
+        /// Mark this as supporting color buffer usage with the channels R
+        ///
+        /// Also sets some default usage flags.
+        Self& r()
+        {
+            using C = SwapchainFormat::RawColorComponents;
+            return Color(C::r);
+        }
+
+        /// Mark this as supporting color buffer usage with the channels R, G
+        ///
+        /// Also sets some default usage flags.
+        Self& rg()
+        {
+            using C = SwapchainFormat::RawColorComponents;
+            return Color((C)(C::r | C::g));
+        }
+
+        /// Mark this as supporting color buffer usage with the channels R, G, B
+        ///
+        /// Also sets some default usage flags.
+        Self& rgb()
+        {
+            using C = SwapchainFormat::RawColorComponents;
+            return Color((C)(C::r | C::g | C::b));
+        }
+
+        /// Mark this as supporting color buffer usage with the channels R, G, B, A
+        ///
+        /// Also sets some default usage flags.
+        Self& rgba()
+        {
+            using C = SwapchainFormat::RawColorComponents;
+            return Color((C)(C::r | C::g | C::b | C::a));
+        }
+
+        /// Mark this as a color integer format with the color/alpha depth specified
+        Self& Int(SwapchainFormat::ColorIntegerRange range)
+        {
+            m_data.m_integerRange = range;
+            return *this;
+        }
+
         /// Mark this as not supporting "unordered access"
         Self& NoUnorderedAccess()
         {
@@ -214,7 +273,7 @@ namespace Conformance
         Self& Depth()
         {
             m_data.m_depthFormat = true;
-            NotColor();
+            UpdateDefaultUsageFlagVector();
             return *this;
         }
 
@@ -224,7 +283,7 @@ namespace Conformance
         Self& Stencil()
         {
             m_data.m_stencilFormat = true;
-            NotColor();
+            UpdateDefaultUsageFlagVector();
             return *this;
         }
 
@@ -237,7 +296,7 @@ namespace Conformance
         {
             m_data.m_stencilFormat = true;
             m_data.m_depthFormat = true;
-            NotColor();
+            UpdateDefaultUsageFlagVector();
             return *this;
         }
 
@@ -292,12 +351,6 @@ namespace Conformance
         std::string ToString() const;
 
     private:
-        void NotColor()
-        {
-            m_data.m_colorFormat = false;
-            UpdateDefaultUsageFlagVector();
-        }
-
         void UpdateDefaultUsageFlagVector();
         SwapchainFormatData m_data;
     };

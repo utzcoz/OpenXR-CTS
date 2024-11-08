@@ -620,204 +620,243 @@ namespace Conformance
 
     static const SwapchainFormatDataMap& GetSwapchainFormatData()
     {
+        using namespace SwapchainFormat;
+        using C = SwapchainFormat::RawColorComponents;
+
         static SwapchainFormatDataMap map{
 
             //
             // 8 bits per component
             //
-            XRC_SWAPCHAIN_FORMAT(GL_R8).WORKAROUND.ToPair(),            // 1-component, 8-bit unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RG8).WORKAROUND.ToPair(),           // 2-component, 8-bit unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGB8).WORKAROUND.ToPair(),          // 3-component, 8-bit unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGBA8).WORKAROUND.ToPair(),         // 4-component, 8-bit unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_R8_SNORM).WORKAROUND.ToPair(),      // 1-component, 8-bit signed normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RG8_SNORM).WORKAROUND.ToPair(),     // 2-component, 8-bit signed normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGB8_SNORM).WORKAROUND.ToPair(),    // 3-component, 8-bit signed normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGBA8_SNORM).WORKAROUND.ToPair(),   // 4-component, 8-bit signed normalized
-            XRC_SWAPCHAIN_FORMAT(GL_R8UI).WORKAROUND.ToPair(),          // 1-component, 8-bit unsigned integer
-            XRC_SWAPCHAIN_FORMAT(GL_RG8UI).WORKAROUND.ToPair(),         // 2-component, 8-bit unsigned integer
-            XRC_SWAPCHAIN_FORMAT(GL_RGB8UI).WORKAROUND.ToPair(),        // 3-component, 8-bit unsigned integer
-            XRC_SWAPCHAIN_FORMAT(GL_RGBA8UI).WORKAROUND.ToPair(),       // 4-component, 8-bit unsigned integer
-            XRC_SWAPCHAIN_FORMAT(GL_R8I).WORKAROUND.ToPair(),           // 1-component, 8-bit signed integer
-            XRC_SWAPCHAIN_FORMAT(GL_RG8I).WORKAROUND.ToPair(),          // 2-component, 8-bit signed integer
-            XRC_SWAPCHAIN_FORMAT(GL_RGB8I).WORKAROUND.ToPair(),         // 3-component, 8-bit signed integer
-            XRC_SWAPCHAIN_FORMAT(GL_RGBA8I).WORKAROUND.ToPair(),        // 4-component, 8-bit signed integer
-            XRC_SWAPCHAIN_FORMAT(GL_SR8).WORKAROUND.ToPair(),           // 1-component, 8-bit sRGB
-            XRC_SWAPCHAIN_FORMAT(GL_SRG8).WORKAROUND.ToPair(),          // 2-component, 8-bit sRGB
-            XRC_SWAPCHAIN_FORMAT(GL_SRGB8).WORKAROUND.ToPair(),         // 3-component, 8-bit sRGB
-            XRC_SWAPCHAIN_FORMAT(GL_SRGB8_ALPHA8).WORKAROUND.ToPair(),  // 4-component, 8-bit sRGB
+            XRC_SWAPCHAIN_FORMAT(GL_R8).WORKAROUND.r().ToPair(),                  // 1-component, 8-bit unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RG8).WORKAROUND.rg().ToPair(),                // 2-component, 8-bit unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGB8).WORKAROUND.rgb().ToPair(),              // 3-component, 8-bit unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGBA8).WORKAROUND.rgba().ToPair(),            // 4-component, 8-bit unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_R8_SNORM).WORKAROUND.r().ToPair(),            // 1-component, 8-bit signed normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RG8_SNORM).WORKAROUND.rg().ToPair(),          // 2-component, 8-bit signed normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGB8_SNORM).WORKAROUND.rgb().ToPair(),        // 3-component, 8-bit signed normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGBA8_SNORM).WORKAROUND.rgba().ToPair(),      // 4-component, 8-bit signed normalized
+            XRC_SWAPCHAIN_FORMAT(GL_R8UI).WORKAROUND.r().Int(u8).ToPair(),        // 1-component, 8-bit unsigned integer
+            XRC_SWAPCHAIN_FORMAT(GL_RG8UI).WORKAROUND.rg().Int(u8).ToPair(),      // 2-component, 8-bit unsigned integer
+            XRC_SWAPCHAIN_FORMAT(GL_RGB8UI).WORKAROUND.rgb().Int(u8).ToPair(),    // 3-component, 8-bit unsigned integer
+            XRC_SWAPCHAIN_FORMAT(GL_RGBA8UI).WORKAROUND.rgba().Int(u8).ToPair(),  // 4-component, 8-bit unsigned integer
+            XRC_SWAPCHAIN_FORMAT(GL_R8I).WORKAROUND.r().Int(s8).ToPair(),         // 1-component, 8-bit signed integer
+            XRC_SWAPCHAIN_FORMAT(GL_RG8I).WORKAROUND.rg().Int(s8).ToPair(),       // 2-component, 8-bit signed integer
+            XRC_SWAPCHAIN_FORMAT(GL_RGB8I).WORKAROUND.rgb().Int(s8).ToPair(),     // 3-component, 8-bit signed integer
+            XRC_SWAPCHAIN_FORMAT(GL_RGBA8I).WORKAROUND.rgba().Int(s8).ToPair(),   // 4-component, 8-bit signed integer
+            XRC_SWAPCHAIN_FORMAT(GL_SR8).WORKAROUND.r().ToPair(),                 // 1-component, 8-bit sRGB
+            XRC_SWAPCHAIN_FORMAT(GL_SRG8).WORKAROUND.rg().ToPair(),               // 2-component, 8-bit sRGB
+            XRC_SWAPCHAIN_FORMAT(GL_SRGB8).WORKAROUND.rgb().ToPair(),             // 3-component, 8-bit sRGB
+            XRC_SWAPCHAIN_FORMAT(GL_SRGB8_ALPHA8).WORKAROUND.rgba().ToPair(),     // 4-component, 8-bit sRGB
 
             //
             // 16 bits per component
             //
-            XRC_SWAPCHAIN_FORMAT(GL_R16).WORKAROUND.ToPair(),           // 1-component, 16-bit unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RG16).WORKAROUND.ToPair(),          // 2-component, 16-bit unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGB16).WORKAROUND.ToPair(),         // 3-component, 16-bit unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGBA16).WORKAROUND.ToPair(),        // 4-component, 16-bit unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_R16_SNORM).WORKAROUND.ToPair(),     // 1-component, 16-bit signed normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RG16_SNORM).WORKAROUND.ToPair(),    // 2-component, 16-bit signed normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGB16_SNORM).WORKAROUND.ToPair(),   // 3-component, 16-bit signed normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGBA16_SNORM).WORKAROUND.ToPair(),  // 4-component, 16-bit signed normalized
-            XRC_SWAPCHAIN_FORMAT(GL_R16UI).WORKAROUND.ToPair(),         // 1-component, 16-bit unsigned integer
-            XRC_SWAPCHAIN_FORMAT(GL_RG16UI).WORKAROUND.ToPair(),        // 2-component, 16-bit unsigned integer
-            XRC_SWAPCHAIN_FORMAT(GL_RGB16UI).WORKAROUND.ToPair(),       // 3-component, 16-bit unsigned integer
-            XRC_SWAPCHAIN_FORMAT(GL_RGBA16UI).WORKAROUND.ToPair(),      // 4-component, 16-bit unsigned integer
-            XRC_SWAPCHAIN_FORMAT(GL_R16I).WORKAROUND.ToPair(),          // 1-component, 16-bit signed integer
-            XRC_SWAPCHAIN_FORMAT(GL_RG16I).WORKAROUND.ToPair(),         // 2-component, 16-bit signed integer
-            XRC_SWAPCHAIN_FORMAT(GL_RGB16I).WORKAROUND.ToPair(),        // 3-component, 16-bit signed integer
-            XRC_SWAPCHAIN_FORMAT(GL_RGBA16I).WORKAROUND.ToPair(),       // 4-component, 16-bit signed integer
-            XRC_SWAPCHAIN_FORMAT(GL_R16F).WORKAROUND.ToPair(),          // 1-component, 16-bit floating-point
-            XRC_SWAPCHAIN_FORMAT(GL_RG16F).WORKAROUND.ToPair(),         // 2-component, 16-bit floating-point
-            XRC_SWAPCHAIN_FORMAT(GL_RGB16F).WORKAROUND.ToPair(),        // 3-component, 16-bit floating-point
-            XRC_SWAPCHAIN_FORMAT(GL_RGBA16F).WORKAROUND.ToPair(),       // 4-component, 16-bit floating-point
+            XRC_SWAPCHAIN_FORMAT(GL_R16).WORKAROUND.r().ToPair(),                   // 1-component, 16-bit unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RG16).WORKAROUND.rg().ToPair(),                 // 2-component, 16-bit unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGB16).WORKAROUND.rgb().ToPair(),               // 3-component, 16-bit unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGBA16).WORKAROUND.rgba().ToPair(),             // 4-component, 16-bit unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_R16_SNORM).WORKAROUND.r().ToPair(),             // 1-component, 16-bit signed normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RG16_SNORM).WORKAROUND.rg().ToPair(),           // 2-component, 16-bit signed normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGB16_SNORM).WORKAROUND.rgb().ToPair(),         // 3-component, 16-bit signed normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGBA16_SNORM).WORKAROUND.rgba().ToPair(),       // 4-component, 16-bit signed normalized
+            XRC_SWAPCHAIN_FORMAT(GL_R16UI).WORKAROUND.r().Int(u16).ToPair(),        // 1-component, 16-bit unsigned integer
+            XRC_SWAPCHAIN_FORMAT(GL_RG16UI).WORKAROUND.rg().Int(u16).ToPair(),      // 2-component, 16-bit unsigned integer
+            XRC_SWAPCHAIN_FORMAT(GL_RGB16UI).WORKAROUND.rgb().Int(u16).ToPair(),    // 3-component, 16-bit unsigned integer
+            XRC_SWAPCHAIN_FORMAT(GL_RGBA16UI).WORKAROUND.rgba().Int(u16).ToPair(),  // 4-component, 16-bit unsigned integer
+            XRC_SWAPCHAIN_FORMAT(GL_R16I).WORKAROUND.r().Int(s16).ToPair(),         // 1-component, 16-bit signed integer
+            XRC_SWAPCHAIN_FORMAT(GL_RG16I).WORKAROUND.rg().Int(s16).ToPair(),       // 2-component, 16-bit signed integer
+            XRC_SWAPCHAIN_FORMAT(GL_RGB16I).WORKAROUND.rgb().Int(s16).ToPair(),     // 3-component, 16-bit signed integer
+            XRC_SWAPCHAIN_FORMAT(GL_RGBA16I).WORKAROUND.rgba().Int(s16).ToPair(),   // 4-component, 16-bit signed integer
+            XRC_SWAPCHAIN_FORMAT(GL_R16F).WORKAROUND.r().ToPair(),                  // 1-component, 16-bit floating-point
+            XRC_SWAPCHAIN_FORMAT(GL_RG16F).WORKAROUND.rg().ToPair(),                // 2-component, 16-bit floating-point
+            XRC_SWAPCHAIN_FORMAT(GL_RGB16F).WORKAROUND.rgb().ToPair(),              // 3-component, 16-bit floating-point
+            XRC_SWAPCHAIN_FORMAT(GL_RGBA16F).WORKAROUND.rgba().ToPair(),            // 4-component, 16-bit floating-point
 
             //
             // 32 bits per component
             //
-            XRC_SWAPCHAIN_FORMAT(GL_R32UI).WORKAROUND.ToPair(),     // 1-component, 32-bit unsigned integer
-            XRC_SWAPCHAIN_FORMAT(GL_RG32UI).WORKAROUND.ToPair(),    // 2-component, 32-bit unsigned integer
-            XRC_SWAPCHAIN_FORMAT(GL_RGB32UI).WORKAROUND.ToPair(),   // 3-component, 32-bit unsigned integer
-            XRC_SWAPCHAIN_FORMAT(GL_RGBA32UI).WORKAROUND.ToPair(),  // 4-component, 32-bit unsigned integer
-            XRC_SWAPCHAIN_FORMAT(GL_R32I).WORKAROUND.ToPair(),      // 1-component, 32-bit signed integer
-            XRC_SWAPCHAIN_FORMAT(GL_RG32I).WORKAROUND.ToPair(),     // 2-component, 32-bit signed integer
-            XRC_SWAPCHAIN_FORMAT(GL_RGB32I).WORKAROUND.ToPair(),    // 3-component, 32-bit signed integer
-            XRC_SWAPCHAIN_FORMAT(GL_RGBA32I).WORKAROUND.ToPair(),   // 4-component, 32-bit signed integer
-            XRC_SWAPCHAIN_FORMAT(GL_R32F).WORKAROUND.ToPair(),      // 1-component, 32-bit floating-point
-            XRC_SWAPCHAIN_FORMAT(GL_RG32F).WORKAROUND.ToPair(),     // 2-component, 32-bit floating-point
-            XRC_SWAPCHAIN_FORMAT(GL_RGB32F).WORKAROUND.ToPair(),    // 3-component, 32-bit floating-point
-            XRC_SWAPCHAIN_FORMAT(GL_RGBA32F).WORKAROUND.ToPair(),   // 4-component, 32-bit floating-point
+            XRC_SWAPCHAIN_FORMAT(GL_R32UI).WORKAROUND.r().Int(u32).ToPair(),        // 1-component, 32-bit unsigned integer
+            XRC_SWAPCHAIN_FORMAT(GL_RG32UI).WORKAROUND.rg().Int(u32).ToPair(),      // 2-component, 32-bit unsigned integer
+            XRC_SWAPCHAIN_FORMAT(GL_RGB32UI).WORKAROUND.rgb().Int(u32).ToPair(),    // 3-component, 32-bit unsigned integer
+            XRC_SWAPCHAIN_FORMAT(GL_RGBA32UI).WORKAROUND.rgba().Int(u32).ToPair(),  // 4-component, 32-bit unsigned integer
+            XRC_SWAPCHAIN_FORMAT(GL_R32I).WORKAROUND.r().Int(s32).ToPair(),         // 1-component, 32-bit signed integer
+            XRC_SWAPCHAIN_FORMAT(GL_RG32I).WORKAROUND.rg().Int(s32).ToPair(),       // 2-component, 32-bit signed integer
+            XRC_SWAPCHAIN_FORMAT(GL_RGB32I).WORKAROUND.rgb().Int(s32).ToPair(),     // 3-component, 32-bit signed integer
+            XRC_SWAPCHAIN_FORMAT(GL_RGBA32I).WORKAROUND.rgba().Int(s32).ToPair(),   // 4-component, 32-bit signed integer
+            XRC_SWAPCHAIN_FORMAT(GL_R32F).WORKAROUND.r().ToPair(),                  // 1-component, 32-bit floating-point
+            XRC_SWAPCHAIN_FORMAT(GL_RG32F).WORKAROUND.rg().ToPair(),                // 2-component, 32-bit floating-point
+            XRC_SWAPCHAIN_FORMAT(GL_RGB32F).WORKAROUND.rgb().ToPair(),              // 3-component, 32-bit floating-point
+            XRC_SWAPCHAIN_FORMAT(GL_RGBA32F).WORKAROUND.rgba().ToPair(),            // 4-component, 32-bit floating-point
 
             //
             // Packed
             //
-            XRC_SWAPCHAIN_FORMAT(GL_RGB5).WORKAROUND.ToPair(),            // 3-component 5:5:5,       unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGB565).WORKAROUND.ToPair(),          // 3-component 5:6:5,       unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGB10).WORKAROUND.ToPair(),           // 3-component 10:10:10,    unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGBA4).WORKAROUND.ToPair(),           // 4-component 4:4:4:4,     unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGB5_A1).WORKAROUND.ToPair(),         // 4-component 5:5:5:1,     unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGB10_A2).WORKAROUND.ToPair(),        // 4-component 10:10:10:2,  unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_RGB10_A2UI).WORKAROUND.ToPair(),      // 4-component 10:10:10:2,  unsigned integer
-            XRC_SWAPCHAIN_FORMAT(GL_R11F_G11F_B10F).WORKAROUND.ToPair(),  // 3-component 11:11:10,    floating-point
-            XRC_SWAPCHAIN_FORMAT(GL_RGB9_E5).WORKAROUND.ToPair(),         // 3-component/exp 9:9:9/5, floating-point
+            XRC_SWAPCHAIN_FORMAT(GL_RGB5).WORKAROUND.rgb().ToPair(),                       // 3-component 5:5:5,       unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGB565).WORKAROUND.rgb().ToPair(),                     // 3-component 5:6:5,       unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGB10).WORKAROUND.rgb().ToPair(),                      // 3-component 10:10:10,    unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGBA4).WORKAROUND.rgba().ToPair(),                     // 4-component 4:4:4:4,     unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGB5_A1).WORKAROUND.rgba().ToPair(),                   // 4-component 5:5:5:1,     unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGB10_A2).WORKAROUND.rgba().ToPair(),                  // 4-component 10:10:10:2,  unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_RGB10_A2UI).WORKAROUND.rgba().Int(uRGB10A2).ToPair(),  // 4-component 10:10:10:2,  unsigned integer
+            XRC_SWAPCHAIN_FORMAT(GL_R11F_G11F_B10F).WORKAROUND.rgb().ToPair(),             // 3-component 11:11:10,    floating-point
+            XRC_SWAPCHAIN_FORMAT(GL_RGB9_E5).WORKAROUND.rgb().ToPair(),                    // 3-component/exp 9:9:9/5, floating-point
 
             //
             // S3TC/DXT/BC
             //
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGB_S3TC_DXT1_EXT)
+                .rgb()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // line through 3D space, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_S3TC_DXT1_EXT)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // line through 3D space plus 1-bit alpha, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_S3TC_DXT5_EXT)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // line through 3D space plus line through 1D space, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_S3TC_DXT3_EXT)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // line through 3D space plus 4-bit alpha, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB_S3TC_DXT1_EXT)
+                .rgb()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // line through 3D space, 4x4 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // line through 3D space plus 1-bit alpha, 4x4 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // line through 3D space plus line through 1D space, 4x4 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // line through 3D space plus 4-bit alpha, 4x4 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_LUMINANCE_LATC1_EXT)
+                .r()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // line through 1D space, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_LUMINANCE_ALPHA_LATC2_EXT)
+                .Color(C(r | a))
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // two lines through 1D space, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SIGNED_LUMINANCE_LATC1_EXT)
+                .r()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // line through 1D space, 4x4 blocks, signed normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SIGNED_LUMINANCE_ALPHA_LATC2_EXT)
+                .Color(C(r | a))
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // two lines through 1D space, 4x4 blocks, signed normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RED_RGTC1)
+                .r()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // line through 1D space, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RG_RGTC2)
+                .rg()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // two lines through 1D space, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SIGNED_RED_RGTC1)
+                .r()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // line through 1D space, 4x4 blocks, signed normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SIGNED_RG_RGTC2)
+                .rg()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // two lines through 1D space, 4x4 blocks, signed normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT)
+                .rgb()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 3-component, 4x4 blocks, unsigned floating-point
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT)
+                .rgb()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 3-component, 4x4 blocks, signed floating-point
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_BPTC_UNORM)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component, 4x4 blocks, unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM).Compressed().NotMutable().ToPair(),  // 4-component, 4x4 blocks, sRGB
+            XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM)
+                .rgba()
+                .Compressed()
+                .NotMutable()
+                .ToPair(),  // 4-component, 4x4 blocks, sRGB
 
             //
             // ETC
             //
-            XRC_SWAPCHAIN_FORMAT(GL_ETC1_RGB8_OES).Compressed().NotMutable().ToPair(),  // 3-component ETC1, 4x4 blocks, unsigned normalized
+            XRC_SWAPCHAIN_FORMAT(GL_ETC1_RGB8_OES)
+                .rgb()
+                .Compressed()
+                .NotMutable()
+                .ToPair(),  // 3-component ETC1, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGB8_ETC2)
+                .rgb()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 3-component ETC2, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ETC2 with 1-bit alpha, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA8_ETC2_EAC)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ETC2, 4x4 blocks, unsigned normalized
-            XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ETC2).Compressed().NotMutable().ToPair(),  // 3-component ETC2, 4x4 blocks, sRGB
+            XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ETC2).rgb().Compressed().NotMutable().ToPair(),  // 3-component ETC2, 4x4 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ETC2 with 1-bit alpha, 4x4 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ETC2, 4x4 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_R11_EAC)
+                .r()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 1-component ETC, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RG11_EAC)
+                .rg()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 2-component ETC, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SIGNED_R11_EAC)
+                .r()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 1-component ETC, 4x4 blocks, signed normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SIGNED_RG11_EAC)
+                .rg()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 2-component ETC, 4x4 blocks, signed normalized
@@ -826,114 +865,142 @@ namespace Conformance
             // ASTC
             //
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_4x4_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 4x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_5x4_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 5x4 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_5x5_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 5x5 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_6x5_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 6x5 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_6x6_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 6x6 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_8x5_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 8x5 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_8x6_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 8x6 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_8x8_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 8x8 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_10x5_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 10x5 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_10x6_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 10x6 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_10x8_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 10x8 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_10x10_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 10x10 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_12x10_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 12x10 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_RGBA_ASTC_12x12_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 12x12 blocks, unsigned normalized
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 4x4 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x4_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 5x4 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_5x5_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 5x5 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x5_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 6x5 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_6x6_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 6x6 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x5_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 8x5 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x6_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 8x6 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_8x8_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 8x8 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x5_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 10x5 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x6_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 10x6 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x8_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 10x8 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 10x10 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 12x10 blocks, sRGB
             XRC_SWAPCHAIN_FORMAT(GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR)
+                .rgba()
                 .Compressed()
                 .NotMutable()
                 .ToPair(),  // 4-component ASTC, 12x12 blocks, sRGB
