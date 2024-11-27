@@ -133,7 +133,7 @@ XrResult ConformanceHooks::xrGetActionStatePose(XrSession session, const XrActio
     const XrResult result = ConformanceHooksBase::xrGetActionStatePose(session, getInfo, data);
     if (XR_SUCCEEDED(result)) {
         CustomActionState* const actionData = GetCustomActionState(getInfo->action);
-        NONCONFORMANT_IF(actionData->type != XR_ACTION_TYPE_POSE_INPUT, "Unexpected success with action handle type %s",
+        NONCONFORMANT_IF(actionData->type != XR_ACTION_TYPE_POSE_INPUT, "Unexpected success with action handle type %d",
                          (int)actionData->type);
         VALIDATE_XRBOOL32(data->isActive);
     }

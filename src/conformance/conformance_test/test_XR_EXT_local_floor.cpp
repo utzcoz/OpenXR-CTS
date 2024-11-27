@@ -342,9 +342,9 @@ namespace Conformance
             SKIP("XR_REFERENCE_SPACE_TYPE_STAGE not supported");
         }
 
-        XrSpace refSpace = compositionHelper.CreateReferenceSpace(refSpaceType, Pose::Identity);
-        XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
-        XrSpace localFloorSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR_EXT, Pose::Identity);
+        XrSpace refSpace = compositionHelper.CreateReferenceSpace(refSpaceType);
+        XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
+        XrSpace localFloorSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR_EXT);
 
         // Set up composition projection layer and swapchains (one swapchain per view).
         std::vector<XrSwapchain> swapchains;

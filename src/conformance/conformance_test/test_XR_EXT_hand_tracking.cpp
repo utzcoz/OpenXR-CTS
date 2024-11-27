@@ -323,7 +323,7 @@ namespace Conformance
         auto xrDestroyHandTrackerEXT = GetInstanceExtensionFunction<PFN_xrDestroyHandTrackerEXT>(instance, "xrDestroyHandTrackerEXT");
         auto xrLocateHandJointsEXT = GetInstanceExtensionFunction<PFN_xrLocateHandJointsEXT>(instance, "xrLocateHandJointsEXT");
 
-        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
+        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
 
         // Set up composition projection layer and swapchains (one swapchain per view).
         std::vector<XrSwapchain> swapchains;

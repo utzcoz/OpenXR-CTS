@@ -82,7 +82,7 @@ namespace Conformance
 
         HumanDrivenInputdevice(ITestMessageDisplay* const messageDisplay, InteractionManager* const interactionManager, XrInstance instance,
                                XrSession session, XrPath interactionProfile, XrPath topLevelPath,
-                               const InputSourcePathAvailCollection& interactionProfilePaths)
+                               const BindingPathDataCollection& interactionProfilePaths)
             : m_messageDisplay(messageDisplay)
             , m_instance(instance)
             , m_session(session)
@@ -110,11 +110,11 @@ namespace Conformance
             FeatureSet enabled;
             GetGlobalData().PopulateVersionAndEnabledExtensions(enabled);
 
-            for (const InputSourcePathAvailData& inputSourceData : interactionProfilePaths) {
-                if (!starts_with(inputSourceData.Path, topLevelPathString)) {
+            for (const BindingPathData& bindingPathData : interactionProfilePaths) {
+                if (!starts_with(bindingPathData.Path, topLevelPathString)) {
                     continue;
                 }
-                if (!kInteractionAvailabilities[(size_t)inputSourceData.Availability].IsSatisfiedBy(enabled)) {
+                if (!kInteractionAvailabilities[(size_t)bindingPathData.Availability].IsSatisfiedBy(enabled)) {
                     continue;
                 }
 
@@ -122,19 +122,19 @@ namespace Conformance
 
                 XrAction action{XR_NULL_HANDLE};
                 XrActionCreateInfo actionCreateInfo{XR_TYPE_ACTION_CREATE_INFO};
-                actionCreateInfo.actionType = inputSourceData.Type;
+                actionCreateInfo.actionType = bindingPathData.Type;
                 strcpy(actionCreateInfo.localizedActionName, std::get<1>(actionNames).c_str());
                 strcpy(actionCreateInfo.actionName, std::get<0>(actionNames).c_str());
                 REQUIRE_RESULT(xrCreateAction(m_actionSet, &actionCreateInfo, &action), XR_SUCCESS);
 
-                if (m_firstBooleanAction == XR_NULL_PATH && inputSourceData.Type == XR_ACTION_TYPE_BOOLEAN_INPUT) {
+                if (m_firstBooleanAction == XR_NULL_PATH && bindingPathData.Type == XR_ACTION_TYPE_BOOLEAN_INPUT) {
                     m_firstBooleanAction = action;
                 }
-                if (m_firstTrackerAction == XR_NULL_PATH && inputSourceData.Type == XR_ACTION_TYPE_POSE_INPUT) {
+                if (m_firstTrackerAction == XR_NULL_PATH && bindingPathData.Type == XR_ACTION_TYPE_POSE_INPUT) {
                     m_firstTrackerAction = action;
                 }
 
-                const XrPath bindingPath = StringToPath(instance, inputSourceData.Path);
+                const XrPath bindingPath = StringToPath(instance, bindingPathData.Path);
                 m_actionMap.insert({bindingPath, action});
                 interactionManager->AddActionBindings(m_interactionProfile, {{action, bindingPath}});
             }
@@ -560,10 +560,10 @@ namespace Conformance
     std::unique_ptr<IInputTestDevice> CreateTestDevice(ITestMessageDisplay* const messageDisplay,
                                                        InteractionManager* const interactionManager, XrInstance instance, XrSession session,
                                                        XrPath interactionProfile, XrPath topLevelPath,
-                                                       const InputSourcePathAvailCollection& interactionProfilePaths)
+                                                       const BindingPathDataCollection& bindingPaths)
     {
         return std::make_unique<HumanDrivenInputdevice>(messageDisplay, interactionManager, instance, session, interactionProfile,
-                                                        topLevelPath, interactionProfilePaths);
+                                                        topLevelPath, bindingPaths);
     }
 
     std::unique_ptr<IInputTestDevice> CreateTestDevice(ITestMessageDisplay* const messageDisplay, XrInstance instance, XrSession session,

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "utilities/array_size.h"
 #ifdef XR_USE_GRAPHICS_API_VULKAN
 
 #include "throw_helpers.h"
@@ -361,13 +362,34 @@ namespace Conformance
         }
     };
 
+    enum ShaderProgramType
+    {
+        SHADER_PROGRAM_TYPE_GRAPHICS,
+        SHADER_PROGRAM_TYPE_COMPUTE,
+    };
+
     /// ShaderProgram to hold a pair of vertex & fragment shaders
     struct ShaderProgram
     {
-        std::array<VkPipelineShaderStageCreateInfo, 2> shaderInfo{
-            {{VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO}, {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO}}};
+        std::vector<VkPipelineShaderStageCreateInfo> shaderInfo;
+        ShaderProgramType m_programType;
 
-        ShaderProgram() = default;
+        ShaderProgram(ShaderProgramType programType) : m_programType(programType)
+        {
+            switch (programType) {
+            case SHADER_PROGRAM_TYPE_GRAPHICS: {
+                shaderInfo.push_back({VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO});
+                shaderInfo.push_back({VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO});
+                break;
+            }
+            case SHADER_PROGRAM_TYPE_COMPUTE: {
+                shaderInfo.push_back({VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO});
+                break;
+            }
+            default:
+                XRC_THROW("Unknown shader program type");
+            }
+        }
 
         void Reset()
         {
@@ -403,6 +425,11 @@ namespace Conformance
             Load(1, code);
         }
 
+        void LoadComputeShader(const span<const uint32_t> code)
+        {
+            Load(0, code);
+        }
+
         void Init(VkDevice device)
         {
             m_vkDevice = device;
@@ -419,17 +446,34 @@ namespace Conformance
             si.pName = "main";
             std::string name;
 
-            switch (index) {
-            case 0:
-                si.stage = VK_SHADER_STAGE_VERTEX_BIT;
-                name = "vertex";
-                break;
-            case 1:
-                si.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-                name = "fragment";
-                break;
-            default:
-                XRC_THROW("Unknown code index " + std::to_string(index));
+            switch (m_programType) {
+            case SHADER_PROGRAM_TYPE_GRAPHICS: {
+
+                switch (index) {
+                case 0:
+                    si.stage = VK_SHADER_STAGE_VERTEX_BIT;
+                    name = "vertex";
+                    break;
+                case 1:
+                    si.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+                    name = "fragment";
+                    break;
+                default:
+                    XRC_THROW("Unknown code index " + std::to_string(index));
+                }
+            } break;
+
+            case SHADER_PROGRAM_TYPE_COMPUTE: {
+
+                switch (index) {
+                case 0:
+                    si.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+                    name = "compute";
+                    break;
+                default:
+                    XRC_THROW("Unknown code index " + std::to_string(index));
+                }
+            } break;
             }
 
             modInfo.codeSize = code.size() * sizeof(code[0]);
@@ -1012,6 +1056,9 @@ namespace Conformance
     {
         VkPipelineLayout layout{VK_NULL_HANDLE};
 
+        // only set for compute pipelines
+        VkDescriptorSetLayout descriptorSetLayout{VK_NULL_HANDLE};
+
         PipelineLayout() = default;
 
         void Reset()
@@ -1019,6 +1066,9 @@ namespace Conformance
             if (m_vkDevice != nullptr) {
                 if (layout != VK_NULL_HANDLE) {
                     vkDestroyPipelineLayout(m_vkDevice, layout, nullptr);
+                }
+                if (descriptorSetLayout != VK_NULL_HANDLE) {
+                    vkDestroyDescriptorSetLayout(m_vkDevice, descriptorSetLayout, nullptr);
                 }
             }
             layout = VK_NULL_HANDLE;
@@ -1030,20 +1080,49 @@ namespace Conformance
             Reset();
         }
 
-        void Create(VkDevice device)
+        void Create(VkDevice device, ShaderProgramType programType = SHADER_PROGRAM_TYPE_GRAPHICS)
         {
             m_vkDevice = device;
+            switch (programType) {
+            case SHADER_PROGRAM_TYPE_GRAPHICS: {
+                // MVP matrix is a push_constant
+                VkPushConstantRange pcr = {};
+                pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+                pcr.offset = 0;
+                pcr.size = sizeof(VulkanUniformBuffer);
 
-            // MVP matrix is a push_constant
-            VkPushConstantRange pcr = {};
-            pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-            pcr.offset = 0;
-            pcr.size = sizeof(VulkanUniformBuffer);
+                VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+                pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+                pipelineLayoutCreateInfo.pPushConstantRanges = &pcr;
+                XRC_CHECK_THROW_VKCMD(vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutCreateInfo, nullptr, &layout));
+            } break;
+            case SHADER_PROGRAM_TYPE_COMPUTE: {
+                VkDescriptorSetLayoutBinding descriptorSetBindings[2]{};
+                descriptorSetBindings[0].binding = 0;
+                descriptorSetBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                descriptorSetBindings[0].descriptorCount = 1;
+                descriptorSetBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-            VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-            pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-            pipelineLayoutCreateInfo.pPushConstantRanges = &pcr;
-            XRC_CHECK_THROW_VKCMD(vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutCreateInfo, nullptr, &layout));
+                descriptorSetBindings[1].binding = 1;
+                descriptorSetBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                descriptorSetBindings[1].descriptorCount = 1;
+                descriptorSetBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+                VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+                descriptorSetLayoutInfo.bindingCount = (uint32_t)ArraySize(descriptorSetBindings);
+                descriptorSetLayoutInfo.pBindings = descriptorSetBindings;
+
+                vkCreateDescriptorSetLayout(device,  //
+                                            &descriptorSetLayoutInfo, NULL, &descriptorSetLayout);
+
+                VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+                pipelineLayoutCreateInfo.setLayoutCount = 1;
+                pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
+                XRC_CHECK_THROW_VKCMD(vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutCreateInfo, nullptr, &layout));
+            } break;
+            default:
+                XRC_THROW("Unknown programType");
+            }
         }
 
         PipelineLayout(const PipelineLayout&) = delete;
@@ -1066,9 +1145,9 @@ namespace Conformance
             Reset();
         }
 
-        void Create(VkDevice device, VkExtent2D /*size*/, const PipelineLayout& layout, const RenderPass& rp, const ShaderProgram& sp,
-                    const VkVertexInputBindingDescription& bindDesc, span<const VkVertexInputAttributeDescription> attrDesc,
-                    span<VkDynamicState> dynamicStates)
+        void CreateGraphics(VkDevice device, VkExtent2D /*size*/, const PipelineLayout& layout, const RenderPass& rp,
+                            const ShaderProgram& sp, const VkVertexInputBindingDescription& bindDesc,
+                            span<const VkVertexInputAttributeDescription> attrDesc, span<VkDynamicState> dynamicStates)
         {
             m_vkDevice = device;
 
@@ -1162,11 +1241,45 @@ namespace Conformance
             Create(device, pipeInfo);
         }
 
+        void CreateCompute(VkDevice device, VkExtent2D /*size*/, const PipelineLayout& layout, const RenderPass& /* rp */,
+                           const ShaderProgram& sp, const VkVertexInputBindingDescription& /* bindDesc */,
+                           span<const VkVertexInputAttributeDescription> /* attrDesc */, span<VkDynamicState> /* dynamicStates */)
+        {
+            VkComputePipelineCreateInfo pipeInfo{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
+            pipeInfo.flags = 0;
+            pipeInfo.stage = sp.shaderInfo[0], pipeInfo.layout = layout.layout,
+
+            Create(device, pipeInfo);
+        }
+
+        void Create(VkDevice device, VkExtent2D size, const PipelineLayout& layout, const RenderPass& rp, const ShaderProgram& sp,
+                    const VkVertexInputBindingDescription& bindDesc, span<const VkVertexInputAttributeDescription> attrDesc,
+                    span<VkDynamicState> dynamicStates)
+        {
+            switch (sp.m_programType) {
+            case SHADER_PROGRAM_TYPE_GRAPHICS:
+                CreateGraphics(device, size, layout, rp, sp, bindDesc, attrDesc, dynamicStates);
+                break;
+            case SHADER_PROGRAM_TYPE_COMPUTE:
+                CreateCompute(device, size, layout, rp, sp, bindDesc, attrDesc, dynamicStates);
+                break;
+            default:
+                XRC_THROW("Unknown programType")
+            }
+        }
+
         void Create(VkDevice device, const VkGraphicsPipelineCreateInfo& info)
         {
             m_vkDevice = device;
 
             XRC_CHECK_THROW_VKCMD(vkCreateGraphicsPipelines(m_vkDevice, VK_NULL_HANDLE, 1, &info, nullptr, &pipe));
+        }
+
+        void Create(VkDevice device, const VkComputePipelineCreateInfo& info)
+        {
+            m_vkDevice = device;
+
+            XRC_CHECK_THROW_VKCMD(vkCreateComputePipelines(m_vkDevice, VK_NULL_HANDLE, 1, &info, nullptr, &pipe));
         }
 
         void Reset()

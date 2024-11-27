@@ -133,7 +133,7 @@ namespace Conformance
 
         XrSession session = compositionHelper.GetSession();
 
-        const XrSpace viewSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_VIEW, Pose::Identity);
+        const XrSpace viewSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_VIEW);
 
         // Enumerate formats
         std::vector<int64_t> imageFormatArray;

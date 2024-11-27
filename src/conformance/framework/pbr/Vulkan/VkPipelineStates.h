@@ -35,7 +35,11 @@ namespace Pbr
                         span<const VkVertexInputAttributeDescription> vertexAttrDesc,
                         span<const VkVertexInputBindingDescription> vertexInputBindDesc, span<const uint32_t> pbrVS,
                         span<const uint32_t> pbrPS)
-            : m_device(device), m_layout(layout), m_vertexAttrDesc(vertexAttrDesc), m_vertexInputBindDesc(vertexInputBindDesc)
+            : m_device(device)
+            , m_layout(layout)
+            , m_vertexAttrDesc(vertexAttrDesc)
+            , m_vertexInputBindDesc(vertexInputBindDesc)
+            , m_pbrShader(Conformance::SHADER_PROGRAM_TYPE_GRAPHICS)
         {
             m_pbrShader.Init(m_device);
             m_pbrShader.LoadVertexShader(pbrVS);

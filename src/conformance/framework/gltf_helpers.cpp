@@ -27,7 +27,7 @@ namespace Conformance
         loader.SetImageLoader(GltfHelper::PassThroughKTX2, nullptr);
         bool loadedModel = loader.LoadBinaryFromMemory(model.get(), &err, &warn, data.data(), (unsigned int)data.size());
         if (!warn.empty()) {
-            ReportF("glTF WARN: %s", &warn);
+            ReportF("glTF WARN: %s", warn.c_str());
         }
 
         if (!err.empty()) {

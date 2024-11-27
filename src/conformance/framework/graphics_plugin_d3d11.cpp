@@ -216,6 +216,9 @@ namespace Conformance
         void RenderView(const XrCompositionLayerProjectionView& layerView, const XrSwapchainImageBaseHeader* colorSwapchainImage,
                         const RenderParams& params) override;
 
+        void RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                          const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color) override;
+
     private:
         ComPtr<ID3D11RenderTargetView> CreateRenderTargetView(D3D11SwapchainImageData& swapchainData, uint32_t imageIndex,
                                                               uint32_t imageArrayIndex) const;
@@ -500,7 +503,37 @@ namespace Conformance
 
     bool D3D11GraphicsPlugin::GetSwapchainCreateTestParameters(int64_t imageFormat, SwapchainCreateTestParameters* swapchainTestParameters)
     {
-        return GetDxgiSwapchainCreateTestParameters(imageFormat, swapchainTestParameters);
+        bool success = GetDxgiSwapchainCreateTestParameters(imageFormat, swapchainTestParameters);
+
+        if (!success) {
+            return success;
+        }
+
+        /// @todo Conformance::GetDxgiSwapchainTestMap() has no access to our d3d11 objects, therefore remove the wrongly added unordered access here.
+        bool supportsUnorderedAccess = false;
+        D3D11_FEATURE_DATA_FORMAT_SUPPORT formatSupport = {(DXGI_FORMAT)imageFormat};
+        if (SUCCEEDED(d3d11Device->CheckFeatureSupport(D3D11_FEATURE_FORMAT_SUPPORT, &formatSupport, sizeof(formatSupport)))) {
+            if ((formatSupport.OutFormatSupport & D3D11_FORMAT_SUPPORT_TYPED_UNORDERED_ACCESS_VIEW) != 0) {
+                supportsUnorderedAccess = true;
+            }
+        }
+        else {
+            WARN("Failed to check format support.");
+        }
+
+        swapchainTestParameters->usageFlagsVector.erase(
+            std::remove_if(swapchainTestParameters->usageFlagsVector.begin(), swapchainTestParameters->usageFlagsVector.end(),
+                           [&](auto uf) {
+                               if ((uf & XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT) != 0) {
+                                   if (!supportsUnorderedAccess) {
+                                       return true;
+                                   }
+                               }
+                               return false;
+                           }),
+            swapchainTestParameters->usageFlagsVector.end());
+
+        return true;
     }
 
     bool D3D11GraphicsPlugin::ValidateSwapchainImages(int64_t /*imageFormat*/, const SwapchainCreateTestParameters* tp,
@@ -822,6 +855,30 @@ namespace Conformance
 
             gltf.Render(d3d11DeviceContext, *m_pbrResources, modelToWorld);
         }
+    }
+
+    void D3D11GraphicsPlugin::RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                                           const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color)
+    {
+        (void)layerView;
+        (void)color;
+
+        D3D11SwapchainImageData* swapchainData;
+        uint32_t imageIndex;
+
+        std::tie(swapchainData, imageIndex) = m_swapchainImageDataMap.GetDataAndIndexFromBasePointer(colorSwapchainImage);
+
+        ID3D11Texture2D* const colorTexture = swapchainData->GetTypedImage(imageIndex).texture;
+
+        D3D11_TEXTURE2D_DESC desc{};
+        colorTexture->GetDesc(&desc);
+
+        REQUIRE((desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) != 0);
+
+        bool defaultOrDynamicUsage = (desc.Usage == D3D11_USAGE_DEFAULT || desc.Usage == D3D11_USAGE_DYNAMIC);
+        REQUIRE(defaultOrDynamicUsage);
+
+        /// @todo: implement actual rendering
     }
 
     std::shared_ptr<IGraphicsPlugin> CreateGraphicsPlugin_D3D11(std::shared_ptr<IPlatformPlugin> platformPlugin)

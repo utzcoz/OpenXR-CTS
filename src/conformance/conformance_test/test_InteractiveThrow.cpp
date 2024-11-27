@@ -20,6 +20,7 @@
 #include "utilities/ballistics.h"
 #include "utilities/throw_helpers.h"
 #include "utilities/utils.h"
+#include "utilities/xr_math_operators.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <openxr/openxr.h>
@@ -27,9 +28,6 @@
 #include <array>
 
 using namespace Conformance;
-
-// Useful to track down errors when debugging stateful graphics APIs like OpenGL:
-#define CHKGR() GetGlobalData().graphicsPlugin->CheckState(XRC_FILE_AND_LINE)
 
 namespace Conformance
 {
@@ -52,7 +50,9 @@ namespace Conformance
 
         CompositionHelper compositionHelper("Interactive Throw");
 
-        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
+        XrInstance instance = compositionHelper.GetInstance();
+        XrSession session = compositionHelper.GetSession();
+        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
 
         // Set up composition projection layer and swapchains (one swapchain per view).
         std::vector<XrSwapchain> swapchains;
@@ -67,8 +67,10 @@ namespace Conformance
             }
         }
 
-        const std::vector<XrPath> subactionPaths{StringToPath(compositionHelper.GetInstance(), "/user/hand/left"),
-                                                 StringToPath(compositionHelper.GetInstance(), "/user/hand/right")};
+        const std::array<XrPath, 2> subactionPaths{
+            StringToPath(instance, "/user/hand/left"),
+            StringToPath(instance, "/user/hand/right"),
+        };
 
         XrActionSet actionSet;
         XrAction throwAction, failAction, gripPoseAction;
@@ -76,7 +78,7 @@ namespace Conformance
             XrActionSetCreateInfo actionSetInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
             strcpy(actionSetInfo.actionSetName, "interaction_test");
             strcpy(actionSetInfo.localizedActionSetName, "Interaction Test");
-            XRC_CHECK_THROW_XRCMD(xrCreateActionSet(compositionHelper.GetInstance(), &actionSetInfo, &actionSet));
+            XRC_CHECK_THROW_XRCMD(xrCreateActionSet(instance, &actionSetInfo, &actionSet));
 
             XrActionCreateInfo actionInfo{XR_TYPE_ACTION_CREATE_INFO};
             actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
@@ -102,31 +104,31 @@ namespace Conformance
         }
 
         const std::vector<XrActionSuggestedBinding> bindings = {
-            {throwAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/select/click")},
-            {throwAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/select/click")},
-            {failAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/menu/click")},
-            {failAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/menu/click")},
-            {gripPoseAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/grip/pose")},
-            {gripPoseAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/grip/pose")},
+            {throwAction, StringToPath(instance, "/user/hand/left/input/select/click")},
+            {throwAction, StringToPath(instance, "/user/hand/right/input/select/click")},
+            {failAction, StringToPath(instance, "/user/hand/left/input/menu/click")},
+            {failAction, StringToPath(instance, "/user/hand/right/input/menu/click")},
+            {gripPoseAction, StringToPath(instance, "/user/hand/left/input/grip/pose")},
+            {gripPoseAction, StringToPath(instance, "/user/hand/right/input/grip/pose")},
         };
 
         XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
-        suggestedBindings.interactionProfile = StringToPath(compositionHelper.GetInstance(), "/interaction_profiles/khr/simple_controller");
+        suggestedBindings.interactionProfile = StringToPath(instance, "/interaction_profiles/khr/simple_controller");
         suggestedBindings.suggestedBindings = bindings.data();
         suggestedBindings.countSuggestedBindings = (uint32_t)bindings.size();
-        XRC_CHECK_THROW_XRCMD(xrSuggestInteractionProfileBindings(compositionHelper.GetInstance(), &suggestedBindings));
+        XRC_CHECK_THROW_XRCMD(xrSuggestInteractionProfileBindings(instance, &suggestedBindings));
 
         XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
         attachInfo.actionSets = &actionSet;
         attachInfo.countActionSets = 1;
-        XRC_CHECK_THROW_XRCMD(xrAttachSessionActionSets(compositionHelper.GetSession(), &attachInfo));
+        XRC_CHECK_THROW_XRCMD(xrAttachSessionActionSets(session, &attachInfo));
 
         compositionHelper.BeginSession();
 
         // Create the instructional quad layer placed to the left.
         XrCompositionLayerQuad* const instructionsQuad =
             compositionHelper.CreateQuadLayer(compositionHelper.CreateStaticSwapchainImage(CreateTextImage(1024, 768, instructions, 48)),
-                                              localSpace, 1, {{0, 0, 0, 1}, {-1.5f, 0, -0.3f}});
+                                              localSpace, 1, {Quat::Identity, {-1.5f, 0, -0.3f}});
         instructionsQuad->pose.orientation = Quat::FromAxisAngle(Up, DegToRad(70));
 
         // Spaces attached to the hand (subaction).
@@ -146,8 +148,8 @@ namespace Conformance
                 XrActionSpaceCreateInfo spaceCreateInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
                 spaceCreateInfo.action = gripPoseAction;
                 spaceCreateInfo.subactionPath = subactionPath;
-                spaceCreateInfo.poseInActionSpace = {{0, 0, 0, 1}, {0, 0, -meterDistance}};
-                XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(compositionHelper.GetSession(), &spaceCreateInfo, &handSpace));
+                spaceCreateInfo.poseInActionSpace = {Quat::Identity, {0, 0, -meterDistance}};
+                XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(session, &spaceCreateInfo, &handSpace));
                 handThrowSpaces.spaces.push_back(handSpace);
             }
             throwSpaces.push_back(std::move(handThrowSpaces));
@@ -164,6 +166,8 @@ namespace Conformance
         constexpr XrVector3f targetCubeScale{0.2f, 0.2f, 0.2f};
         constexpr float targetCubeHitThreshold = 0.25f;
 
+        constexpr XrVector3f accelDueToGravity{0.f, -9.8f, 0.f};
+
         MeshHandle gnomonMesh = GetGlobalData().graphicsPlugin->MakeGnomonMesh();
 
         auto update = [&](const XrFrameState& frameState) {
@@ -174,15 +178,14 @@ namespace Conformance
             XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
             syncInfo.activeActionSets = activeActionSets.data();
             syncInfo.countActiveActionSets = (uint32_t)activeActionSets.size();
-            XRC_CHECK_THROW_XRCMD(xrSyncActions(compositionHelper.GetSession(), &syncInfo));
+            XRC_CHECK_THROW_XRCMD(xrSyncActions(session, &syncInfo));
 
             // Check if user has requested to fail the test.
             {
                 XrActionStateGetInfo completeActionGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
                 completeActionGetInfo.action = failAction;
                 XrActionStateBoolean completeActionState{XR_TYPE_ACTION_STATE_BOOLEAN};
-                XRC_CHECK_THROW_XRCMD(
-                    xrGetActionStateBoolean(compositionHelper.GetSession(), &completeActionGetInfo, &completeActionState));
+                XRC_CHECK_THROW_XRCMD(xrGetActionStateBoolean(session, &completeActionGetInfo, &completeActionState));
                 if (completeActionState.currentState == XR_TRUE && completeActionState.changedSinceLastSync) {
                     return false;
                 }
@@ -199,7 +202,7 @@ namespace Conformance
             }
 
             for (BodyInMotion& thrownCube : thrownCubes) {
-                thrownCube.doSimulationStep({0.f, -9.8f, 0.f}, frameState.predictedDisplayTime);
+                thrownCube.doSimulationStep(accelDueToGravity, frameState.predictedDisplayTime);
                 cubes.push_back({thrownCube.pose, activateCubeScale});
 
                 // Remove any target cubes which are hit by the thrown cube.
@@ -221,7 +224,7 @@ namespace Conformance
 
             // Add the targets.
             for (const XrVector3f& targetCubePosition : targetCubes) {
-                cubes.push_back({{{0, 0, 0, 1}, targetCubePosition}, targetCubeScale});
+                cubes.push_back({{Quat::Identity, targetCubePosition}, targetCubeScale});
             }
 
             // Locate throw spaces and add as cubes. Spawn thrown cubes when select released.
@@ -231,7 +234,7 @@ namespace Conformance
                     getInfo.action = throwAction;
                     getInfo.subactionPath = subactionSpaces.subactionPath;
                     XrActionStateBoolean boolState{XR_TYPE_ACTION_STATE_BOOLEAN};
-                    XRC_CHECK_THROW_XRCMD(xrGetActionStateBoolean(compositionHelper.GetSession(), &getInfo, &boolState));
+                    XRC_CHECK_THROW_XRCMD(xrGetActionStateBoolean(session, &getInfo, &boolState));
 
                     for (XrSpace throwSpace : subactionSpaces.spaces) {
                         XrSpaceVelocity spaceVelocity{XR_TYPE_SPACE_VELOCITY};
@@ -247,7 +250,7 @@ namespace Conformance
                                 for (int step = 1; step < 20; ++step) {
                                     auto predictedDisplayTimeAtStep =
                                         frameState.predictedDisplayTime + step * frameState.predictedDisplayPeriod;
-                                    gnomon.doSimulationStep({0.f, -9.8f, 0.f}, predictedDisplayTimeAtStep);
+                                    gnomon.doSimulationStep(accelDueToGravity, predictedDisplayTimeAtStep);
                                     meshes.push_back(MeshDrawable{gnomonMesh, gnomon.pose, gnomonScale});
                                 }
                             }
@@ -302,7 +305,7 @@ namespace Conformance
             return true;
         };
 
-        RenderLoop(compositionHelper.GetSession(), update).Loop();
+        RenderLoop(session, update).Loop();
 
         // The render loop will end if the user hits and removes all three target cubes or if the user presses menu.
         if (!targetCubes.empty()) {

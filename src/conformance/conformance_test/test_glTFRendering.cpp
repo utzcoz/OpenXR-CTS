@@ -16,6 +16,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <openxr/openxr.h>
 
+#include <array>
 #include <cstdint>
 #include <fstream>
 #include <future>
@@ -45,7 +46,7 @@ namespace Conformance
         // Each test case will configure the layer manager with its own instructions and image
         InteractiveLayerManager interactiveLayerManager(compositionHelper, nullptr, "glTF rendering");
 
-        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
+        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
 
         // Set up composition projection layer and swapchains (one swapchain per view).
         std::vector<XrSwapchain> swapchains;
@@ -60,7 +61,10 @@ namespace Conformance
             }
         }
 
-        const std::vector<XrPath> subactionPaths{StringToPath(instance, "/user/hand/left"), StringToPath(instance, "/user/hand/right")};
+        const std::array<XrPath, 2> subactionPaths{
+            StringToPath(instance, "/user/hand/left"),
+            StringToPath(instance, "/user/hand/right"),
+        };
 
         XrActionSet actionSet;
         XrAction gripPoseAction;
@@ -176,7 +180,7 @@ namespace Conformance
              "Barn Lamp KTX2 Texture Test",
              "This model uses many unimplemented extensions."
              " To pass, simply ensure that text is visible on the side of the lamp.",
-             nullptr,
+             "AnisotropyBarnLamp.png",
              {Quat::FromAxisAngle({1, 0, 0}, DegToRad(-90)), {0, 0, 0}},
              1.0f},
         };

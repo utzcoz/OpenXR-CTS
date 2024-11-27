@@ -14,6 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "utilities/array_size.h"
 #ifdef XR_USE_GRAPHICS_API_VULKAN
 #include "RGBAImage.h"
 #include "conformance_utils.h"
@@ -53,6 +54,7 @@
 #include <array>
 #include <assert.h>
 #include <cstdint>
+#include <inttypes.h>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -129,20 +131,25 @@ namespace Conformance
         std::vector<RenderTarget> m_renderTarget;  // per swapchain index
         RenderPass m_rp{};
         Pipeline m_pipe{};
+        Pipeline m_pipeCompute{};
 
         void init(const VulkanDebugObjectNamer& namer, VkDevice device, uint32_t capacity, const VkExtent2D size, VkFormat colorFormat,
-                  VkFormat depthFormat, VkSampleCountFlagBits sampleCount, const PipelineLayout& layout, const ShaderProgram& sp,
+                  VkFormat depthFormat, VkSampleCountFlagBits sampleCount, const PipelineLayout& layout,
+                  const PipelineLayout& computeLayout, const ShaderProgram& sp, const ShaderProgram& spCompute,
                   const VkVertexInputBindingDescription& bindDesc, span<const VkVertexInputAttributeDescription> attrDesc)
         {
             m_renderTarget.resize(capacity);
             m_rp.Create(namer, device, colorFormat, depthFormat, sampleCount);
             VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_VIEWPORT};
             m_pipe.Create(device, size, layout, m_rp, sp, bindDesc, attrDesc, dynamicStates);
+
+            m_pipeCompute.Create(device, size, computeLayout, m_rp, spCompute, bindDesc, attrDesc, dynamicStates);
         }
 
         void Reset()
         {
             m_pipe.Reset();
+            m_pipeCompute.Reset();
             m_rp.Reset();
             m_renderTarget.clear();
         }
@@ -151,19 +158,21 @@ namespace Conformance
     /// Vulkan data used per swapchain. One per XrSwapchain handle.
     class VulkanSwapchainImageData : public SwapchainImageDataBase<XrSwapchainImageVulkanKHR>
     {
-        void init(uint32_t capacity, VkFormat colorFormat, const PipelineLayout& layout, const ShaderProgram& sp,
-                  const VkVertexInputBindingDescription& bindDesc, span<const VkVertexInputAttributeDescription> attrDesc)
+        void init(uint32_t capacity, VkFormat colorFormat, const PipelineLayout& layout, const PipelineLayout& computeLayout,
+                  const ShaderProgram& sp, const ShaderProgram& spCompute, const VkVertexInputBindingDescription& bindDesc,
+                  span<const VkVertexInputAttributeDescription> attrDesc)
         {
             m_depthBuffer.resize(capacity);
             for (auto& slice : m_slices) {
-                slice.init(m_namer, m_vkDevice, capacity, m_size, colorFormat, m_depthFormat, m_sampleCount, layout, sp, bindDesc,
-                           attrDesc);
+                slice.init(m_namer, m_vkDevice, capacity, m_size, colorFormat, m_depthFormat, m_sampleCount, layout, computeLayout, sp,
+                           spCompute, bindDesc, attrDesc);
             }
         }
 
     public:
         VulkanSwapchainImageData(const VulkanDebugObjectNamer& namer, uint32_t capacity, const XrSwapchainCreateInfo& swapchainCreateInfo,
-                                 VkDevice device, MemoryAllocator* memAllocator, const PipelineLayout& layout, const ShaderProgram& sp,
+                                 VkDevice device, MemoryAllocator* memAllocator, const PipelineLayout& layout,
+                                 const PipelineLayout& computeLayout, const ShaderProgram& sp, const ShaderProgram& spCompute,
                                  const VkVertexInputBindingDescription& bindDesc, span<const VkVertexInputAttributeDescription> attrDesc)
             : SwapchainImageDataBase(XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR, capacity, swapchainCreateInfo)
             , m_namer(namer)
@@ -173,13 +182,14 @@ namespace Conformance
             , m_sampleCount{(VkSampleCountFlagBits)swapchainCreateInfo.sampleCount}
             , m_slices(swapchainCreateInfo.arraySize)
         {
-            init(capacity, (VkFormat)swapchainCreateInfo.format, layout, sp, bindDesc, attrDesc);
+            init(capacity, (VkFormat)swapchainCreateInfo.format, layout, computeLayout, sp, spCompute, bindDesc, attrDesc);
         }
 
         VulkanSwapchainImageData(const VulkanDebugObjectNamer& namer, uint32_t capacity, const XrSwapchainCreateInfo& swapchainCreateInfo,
                                  XrSwapchain depthSwapchain, const XrSwapchainCreateInfo& depthSwapchainCreateInfo, VkDevice device,
-                                 MemoryAllocator* memAllocator, const PipelineLayout& layout, const ShaderProgram& sp,
-                                 const VkVertexInputBindingDescription& bindDesc, span<const VkVertexInputAttributeDescription> attrDesc)
+                                 MemoryAllocator* memAllocator, const PipelineLayout& layout, const PipelineLayout& computeLayout,
+                                 const ShaderProgram& sp, const ShaderProgram& spCompute, const VkVertexInputBindingDescription& bindDesc,
+                                 span<const VkVertexInputAttributeDescription> attrDesc)
             : SwapchainImageDataBase(XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR, capacity, swapchainCreateInfo, depthSwapchain,
                                      depthSwapchainCreateInfo)
             , m_namer(namer)
@@ -190,7 +200,7 @@ namespace Conformance
             , m_depthFormat((VkFormat)depthSwapchainCreateInfo.format)
             , m_slices(swapchainCreateInfo.arraySize)
         {
-            init(capacity, (VkFormat)swapchainCreateInfo.format, layout, sp, bindDesc, attrDesc);
+            init(capacity, (VkFormat)swapchainCreateInfo.format, layout, computeLayout, sp, spCompute, bindDesc, attrDesc);
         }
 
         ~VulkanSwapchainImageData() override
@@ -213,9 +223,18 @@ namespace Conformance
             renderPassBeginInfo->renderArea = renderArea;
         }
 
-        void BindPipeline(VkCommandBuffer buf, uint32_t arraySlice)
+        void BindPipeline(VkCommandBuffer buf, uint32_t arraySlice, enum ShaderProgramType programType = SHADER_PROGRAM_TYPE_GRAPHICS)
         {
-            vkCmdBindPipeline(buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_slices[arraySlice].m_pipe.pipe);
+            switch (programType) {
+            case SHADER_PROGRAM_TYPE_GRAPHICS:
+                vkCmdBindPipeline(buf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_slices[arraySlice].m_pipe.pipe);
+                break;
+            case SHADER_PROGRAM_TYPE_COMPUTE:
+                vkCmdBindPipeline(buf, VK_PIPELINE_BIND_POINT_COMPUTE, m_slices[arraySlice].m_pipeCompute.pipe);
+                break;
+            default:
+                XRC_THROW("unknown programType");
+            }
         }
 
         void TransitionLayout(uint32_t imageIndex, CmdBuffer* cmdBuffer, VkImageLayout newLayout)
@@ -235,6 +254,11 @@ namespace Conformance
         int64_t GetDepthFormat() const
         {
             return m_depthFormat;
+        }
+
+        const std::vector<VulkanArraySliceState>& GetSlices() const
+        {
+            return m_slices;
         }
 
     protected:
@@ -669,6 +693,9 @@ namespace Conformance
         void RenderView(const XrCompositionLayerProjectionView& layerView, const XrSwapchainImageBaseHeader* colorSwapchainImage,
                         const RenderParams& params) override;
 
+        void RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                          const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color) override;
+
         /// Get data on a known swapchain format
         const SwapchainFormatData& FindFormatData(int64_t format) const;
 
@@ -714,9 +741,15 @@ namespace Conformance
         VkSemaphore m_vkDrawDone{VK_NULL_HANDLE};
 
         MemoryAllocator m_memAllocator{};
-        ShaderProgram m_shaderProgram{};
+        ShaderProgram m_shaderProgram{SHADER_PROGRAM_TYPE_GRAPHICS};
+        ShaderProgram m_computeShaderProgram{SHADER_PROGRAM_TYPE_COMPUTE};
         CmdBuffer m_cmdBuffer{};
         PipelineLayout m_pipelineLayout{};
+
+        PipelineLayout m_computePipelineLayout{};
+        Conformance::ScopedVkDescriptorPool m_computeDescriptorPool;
+        VkDescriptorSet m_ComputeDescriptorSet;
+
         MeshHandle m_cubeMesh{};
         VectorWithGenerationCountedHandles<VulkanMesh, MeshHandle> m_meshes;
         // This is fine to be a shared_ptr because Model doesn't directly hold any graphics state.
@@ -824,7 +857,7 @@ namespace Conformance
                 }
             }
 
-            ReportF("%s (%s 0x%llx) %s", flagNames.c_str(), objName.c_str(), object, pCallbackData->pMessage);
+            ReportF("%s (%s 0x%" PRIu64 ") %s", flagNames.c_str(), objName.c_str(), object, pCallbackData->pMessage);
 
             return VK_FALSE;
         }
@@ -986,6 +1019,25 @@ namespace Conformance
         return pfnCreateVulkanDeviceKHR(instance, createInfo, vulkanDevice, vulkanResult);
     }
 
+    static VkDescriptorPool CreateDescriptorPool(VkDevice device, uint32_t maxSets, uint32_t descriptorCount)
+    {
+        VkDescriptorPoolSize poolSizes[2]{};
+        poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        poolSizes[0].descriptorCount = descriptorCount;
+
+        poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSizes[1].descriptorCount = descriptorCount;
+
+        VkDescriptorPoolCreateInfo descriptorPoolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+        descriptorPoolInfo.maxSets = maxSets;
+        descriptorPoolInfo.poolSizeCount = (uint32_t)ArraySize(poolSizes);
+        descriptorPoolInfo.pPoolSizes = poolSizes;
+
+        VkDescriptorPool descriptorPool;
+        XRC_CHECK_THROW_VKCMD(vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool));
+        return descriptorPool;
+    };
+
     XrResult VulkanGraphicsPluginLegacy::CreateVulkanDeviceKHR(XrInstance instance, const XrVulkanDeviceCreateInfoKHR* createInfo,
                                                                VkDevice* vulkanDevice, VkResult* vulkanResult)
     {
@@ -1118,6 +1170,15 @@ namespace Conformance
             }
         }
 
+        VkDebugUtilsMessengerCreateInfoEXT debugInfo{VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
+        debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+        debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+#if !defined(NDEBUG)
+        debugInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+#endif
+        debugInfo.pfnUserCallback = debugMessageThunk;
+        debugInfo.pUserData = this;
+
         VkResult err;
         {
             // Note: This cannot outlive the extensionNames above, since it's just a collection of views into that string!
@@ -1181,6 +1242,7 @@ namespace Conformance
             appInfo.apiVersion = VK_API_VERSION_1_0;
 
             VkInstanceCreateInfo instInfo{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+            instInfo.pNext = &debugInfo;
             instInfo.pApplicationInfo = &appInfo;
             instInfo.enabledLayerCount = (uint32_t)layers.size();
             instInfo.ppEnabledLayerNames = layers.empty() ? nullptr : layers.data();
@@ -1207,14 +1269,6 @@ namespace Conformance
             (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(m_vkInstance, "vkDestroyDebugUtilsMessengerEXT");
 
         if (vkCreateDebugUtilsMessengerEXT != nullptr && vkDestroyDebugUtilsMessengerEXT != nullptr) {
-            VkDebugUtilsMessengerCreateInfoEXT debugInfo{VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
-            debugInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-            debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-#if !defined(NDEBUG)
-            debugInfo.messageSeverity |= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
-#endif
-            debugInfo.pfnUserCallback = debugMessageThunk;
-            debugInfo.pUserData = this;
             XRC_CHECK_THROW_VKCMD(vkCreateDebugUtilsMessengerEXT(m_vkInstance, &debugInfo, nullptr, &m_vkDebugUtilsMessenger));
         }
 
@@ -1316,15 +1370,23 @@ namespace Conformance
         std::vector<uint32_t> fragmentSPIRV = SPV_PREFIX
 #include "frag.spv"  // IWYU pragma: keep
             SPV_SUFFIX;
+        std::vector<uint32_t> computeSPIRV = SPV_PREFIX
+#include "comp.spv"  // IWYU pragma: keep
+            SPV_SUFFIX;
 #endif
         if (vertexSPIRV.empty())
             XRC_THROW("Failed to compile vertex shader");
         if (fragmentSPIRV.empty())
             XRC_THROW("Failed to compile fragment shader");
+        if (computeSPIRV.empty())
+            XRC_THROW("Failed to compile compute shader");
 
         m_shaderProgram.Init(m_vkDevice);
         m_shaderProgram.LoadVertexShader(vertexSPIRV);
         m_shaderProgram.LoadFragmentShader(fragmentSPIRV);
+
+        m_computeShaderProgram.Init(m_vkDevice);
+        m_computeShaderProgram.LoadComputeShader(computeSPIRV);
 
         // Semaphore to block on draw complete
         VkSemaphoreCreateInfo semInfo{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
@@ -1337,6 +1399,21 @@ namespace Conformance
         m_pipelineLayout.Create(m_vkDevice);
         XRC_CHECK_THROW_VKCMD(
             m_namer.SetName(VK_OBJECT_TYPE_PIPELINE_LAYOUT, (uint64_t)m_pipelineLayout.layout, "CTS graphics pipeline layout"));
+
+        m_computePipelineLayout.Create(m_vkDevice, SHADER_PROGRAM_TYPE_COMPUTE);
+        XRC_CHECK_THROW_VKCMD(
+            m_namer.SetName(VK_OBJECT_TYPE_PIPELINE_LAYOUT, (uint64_t)m_computePipelineLayout.layout, "CTS compute pipeline layout"));
+        XRC_CHECK_THROW_VKCMD(m_namer.SetName(VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, (uint64_t)m_computePipelineLayout.descriptorSetLayout,
+                                              "CTS compute descriptor set layout"));
+
+        // resources for compute pipeline
+        m_computeDescriptorPool.adopt(CreateDescriptorPool(m_vkDevice, 1, 1), m_vkDevice);
+
+        VkDescriptorSetAllocateInfo allocInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+        allocInfo.descriptorPool = m_computeDescriptorPool.get();
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &m_computePipelineLayout.descriptorSetLayout;
+        XRC_CHECK_THROW_VKCMD(vkAllocateDescriptorSets(m_vkDevice, &allocInfo, &m_ComputeDescriptorSet));
 
         static_assert(sizeof(Geometry::Vertex) == 24, "Unexpected Vertex size");
 
@@ -1399,8 +1476,12 @@ namespace Conformance
 
             m_cmdBuffer.Reset();
             m_pipelineLayout.Reset();
+            m_computePipelineLayout.Reset();
             m_shaderProgram.Reset();
+            m_computeShaderProgram.Reset();
             m_memAllocator.Reset();
+
+            m_computeDescriptorPool.reset();
 
 #if defined(USE_MIRROR_WINDOW)
             m_swapchain.Reset();
@@ -1604,6 +1685,27 @@ namespace Conformance
     bool VulkanGraphicsPlugin::GetSwapchainCreateTestParameters(int64_t imageFormat, SwapchainCreateTestParameters* swapchainTestParameters)
     {
         *swapchainTestParameters = ::Conformance::GetSwapchainCreateTestParameters(GetSwapchainFormatData(), imageFormat);
+
+        // Conformance::GetSwapchainCreateTestParameters has no access to our Vulkan objects, therefore the queries have to be made here.
+
+        VkFormatProperties formatProperties{};
+        vkGetPhysicalDeviceFormatProperties(m_vkPhysicalDevice, (VkFormat)imageFormat, &formatProperties);
+
+        // we only care about optimal tiling
+        bool supportsStorageImage = (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) != 0;
+
+        swapchainTestParameters->usageFlagsVector.erase(
+            std::remove_if(swapchainTestParameters->usageFlagsVector.begin(), swapchainTestParameters->usageFlagsVector.end(),
+                           [&](auto uf) {
+                               if ((uf & XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT) != 0) {
+                                   if (!supportsStorageImage) {
+                                       return true;
+                                   }
+                               }
+                               return false;
+                           }),
+            swapchainTestParameters->usageFlagsVector.end());
+
         return true;
     }
 
@@ -1719,9 +1821,9 @@ namespace Conformance
 
     ISwapchainImageData* VulkanGraphicsPlugin::AllocateSwapchainImageData(size_t size, const XrSwapchainCreateInfo& swapchainCreateInfo)
     {
-        auto typedResult = std::make_unique<VulkanSwapchainImageData>(m_namer, uint32_t(size), swapchainCreateInfo, m_vkDevice,
-                                                                      &m_memAllocator, m_pipelineLayout, m_shaderProgram,
-                                                                      VulkanMesh::c_bindingDesc, VulkanMesh::c_attrDesc);
+        auto typedResult = std::make_unique<VulkanSwapchainImageData>(
+            m_namer, uint32_t(size), swapchainCreateInfo, m_vkDevice, &m_memAllocator, m_pipelineLayout, m_computePipelineLayout,
+            m_shaderProgram, m_computeShaderProgram, VulkanMesh::c_bindingDesc, VulkanMesh::c_attrDesc);
 
         // Cast our derived type to the caller-expected type.
         auto ret = static_cast<ISwapchainImageData*>(typedResult.get());
@@ -1738,7 +1840,8 @@ namespace Conformance
 
         auto typedResult = std::make_unique<VulkanSwapchainImageData>(
             m_namer, uint32_t(size), colorSwapchainCreateInfo, depthSwapchain, depthSwapchainCreateInfo, m_vkDevice, &m_memAllocator,
-            m_pipelineLayout, m_shaderProgram, VulkanMesh::c_bindingDesc, VulkanMesh::c_attrDesc);
+            m_pipelineLayout, m_computePipelineLayout, m_shaderProgram, m_computeShaderProgram, VulkanMesh::c_bindingDesc,
+            VulkanMesh::c_attrDesc);
 
         // Cast our derived type to the caller-expected type.
         auto ret = static_cast<ISwapchainImageData*>(typedResult.get());
@@ -2132,6 +2235,171 @@ namespace Conformance
             m_swapchain.Present(m_vkQueue);
         }
 #endif
+    }
+
+    void VulkanGraphicsPlugin::RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                                            const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color)
+    {
+        (void)colorSwapchainImage;
+        (void)color;
+
+        VulkanSwapchainImageData* swapchainData;
+        uint32_t imageIndex;
+
+        std::tie(swapchainData, imageIndex) = m_swapchainImageDataMap.GetDataAndIndexFromBasePointer(colorSwapchainImage);
+
+        m_cmdBuffer.Clear();
+        m_cmdBuffer.Begin();
+
+        CHECKPOINT();
+
+        const XrRect2Di& r = layerView.subImage.imageRect;
+        VkRect2D renderArea = {{r.offset.x, r.offset.y}, {uint32_t(r.extent.width), uint32_t(r.extent.height)}};
+        SetViewportAndScissor(renderArea);
+
+        // may be depth, stencil, or both
+        int64_t secondImageFormat = swapchainData->GetDepthFormat();
+        const SwapchainFormatData& secondFormatData = FindFormatData(secondImageFormat);
+        VkImageAspectFlags secondAttachmentAspect = ComputeAspectFlags(secondFormatData);
+
+        // Bind eye render target
+        VkRenderPassBeginInfo renderPassBeginInfo{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+
+        // aka slice
+        auto imageArrayIndex = layerView.subImage.imageArrayIndex;
+
+        swapchainData->BindRenderTarget(imageIndex, imageArrayIndex, renderArea, secondAttachmentAspect, &renderPassBeginInfo);
+
+        if (!swapchainData->DepthSwapchainEnabled()) {
+            // Ensure self-made fallback depth is in the right layout
+            VkImageLayout layout = ComputeLayout(secondFormatData);
+            swapchainData->TransitionLayout(imageIndex, &m_cmdBuffer, layout);
+        }
+
+        CHECKPOINT();
+
+        auto defaultSampler = std::make_shared<Conformance::ScopedVkSampler>(Pbr::VulkanTexture::CreateSampler(m_vkDevice), m_vkDevice);
+
+        struct
+        {
+            float color[4];
+        } ubo = {color.r, color.r, color.g, color.a};
+        uint8_t* uboData = (uint8_t*)&ubo;
+
+        VkBufferCreateInfo bufferCreateInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+        bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        bufferCreateInfo.size = static_cast<VkDeviceSize>(sizeof(ubo));
+
+        Conformance::BufferAndMemory uboBuffer;
+        uboBuffer.Create(m_vkDevice, m_memAllocator, bufferCreateInfo);
+        XRC_CHECK_THROW_VKCMD(m_namer.SetName(VK_OBJECT_TYPE_BUFFER, (uint64_t)uboBuffer.buf, "CTS UBO buffer"));
+        uboBuffer.Update<uint8_t>(m_vkDevice, {uboData, static_cast<size_t>(bufferCreateInfo.size)}, 0);
+
+        {
+            VkImageMemoryBarrier imgBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+            // Switch the destination image from COLOR_ATTACHMENT_OPTIMAL -> GENERAL
+            //
+            // XR_KHR_vulkan_enable / XR_KHR_vulkan_enable2
+            // When an application acquires a swapchain image by calling xrAcquireSwapchainImage
+            // in a session created using XrGraphicsBindingVulkanKHR, the OpenXR runtime must
+            // guarantee that:
+            // - The image has a memory layout compatible with VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+            //   for color images, or VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL for depth images.
+            // - The VkQueue specified in XrGraphicsBindingVulkanKHR has ownership of the image.
+            imgBarrier.srcAccessMask = 0;
+            imgBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            imgBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            imgBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+            imgBarrier.srcQueueFamilyIndex = m_queueFamilyIndex;
+            imgBarrier.dstQueueFamilyIndex = m_queueFamilyIndex;
+            imgBarrier.image = swapchainData->GetTypedImage(imageIndex).image;
+            imgBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            vkCmdPipelineBarrier(m_cmdBuffer.buf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr,
+                                 1, &imgBarrier);
+        }
+
+        {
+            // TODO texture array with multiple slices
+            assert(swapchainData->GetSlices().size() == 1);
+            VkImageView targetImageView = swapchainData->GetSlices()[0].m_renderTarget[imageIndex].colorView;
+            VkImageLayout targetImageLayout = VK_IMAGE_LAYOUT_GENERAL;
+            uint32_t targetImageBinding = 0;
+            uint32_t uboBinding = 1;
+
+            VkDescriptorImageInfo targetImageInfo;
+            targetImageInfo.imageLayout = targetImageLayout;
+            targetImageInfo.imageView = targetImageView;
+            targetImageInfo.sampler = defaultSampler->get();
+
+            VkDescriptorBufferInfo uboInfo;
+            uboInfo.buffer = uboBuffer.buf;
+            uboInfo.offset = 0;
+            uboInfo.range = VK_WHOLE_SIZE;
+
+            VkWriteDescriptorSet writeDescriptorSets[2]{};
+            writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writeDescriptorSets[0].dstSet = m_ComputeDescriptorSet;
+            writeDescriptorSets[0].dstBinding = targetImageBinding;
+            writeDescriptorSets[0].descriptorCount = 1;
+            writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            writeDescriptorSets[0].pImageInfo = &targetImageInfo;
+
+            writeDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writeDescriptorSets[1].dstSet = m_ComputeDescriptorSet;
+            writeDescriptorSets[1].dstBinding = uboBinding;
+            writeDescriptorSets[1].descriptorCount = 1;
+            writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            writeDescriptorSets[1].pBufferInfo = &uboInfo;
+
+            vkUpdateDescriptorSets(m_vkDevice, (uint32_t)ArraySize(writeDescriptorSets), writeDescriptorSets, 0, NULL);
+        }
+
+        swapchainData->BindPipeline(m_cmdBuffer.buf, imageArrayIndex, SHADER_PROGRAM_TYPE_COMPUTE);
+
+        vkCmdBindDescriptorSets(m_cmdBuffer.buf, VK_PIPELINE_BIND_POINT_COMPUTE, m_computePipelineLayout.layout, 0, 1,
+                                &m_ComputeDescriptorSet, 0, NULL);
+
+        CHECKPOINT();
+
+        uint32_t widthDiv = (r.extent.width + 15) / 16;
+        uint32_t heightDiv = (r.extent.height + 15) / 16;
+
+        vkCmdDispatch(m_cmdBuffer.buf, widthDiv, heightDiv, 1);
+
+        CHECKPOINT();
+
+        {
+            VkImageMemoryBarrier imgBarrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+            // Switch the destination image from GENERAL -> COLOR_ATTACHMENT_OPTIMAL
+            //
+            // XR_KHR_vulkan_enable / XR_KHR_vulkan_enable2
+            // When an application releases a swapchain image by calling xrReleaseSwapchainImage, in a
+            // session created using XrGraphicsBindingVulkanKHR, the OpenXR runtime must interpret the
+            // image as:
+            //
+            // - Having a memory layout compatible with VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL for
+            //   color images, or VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL for depth images.
+            // - Being owned by the VkQueue specified in XrGraphicsBindingVulkanKHR.
+            imgBarrier.srcAccessMask = 0;
+            imgBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            imgBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+            imgBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            imgBarrier.srcQueueFamilyIndex = m_queueFamilyIndex;
+            imgBarrier.dstQueueFamilyIndex = m_queueFamilyIndex;
+            imgBarrier.image = swapchainData->GetTypedImage(imageIndex).image;
+            imgBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            vkCmdPipelineBarrier(m_cmdBuffer.buf, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr,
+                                 1, &imgBarrier);
+        }
+
+        CHECKPOINT();
+
+        m_cmdBuffer.End();
+        m_cmdBuffer.Exec(m_vkQueue);
+        // XXX Should double-buffer the command buffers, for now just flush
+        m_cmdBuffer.Wait();
+
+        uboBuffer.Reset(m_vkDevice);
     }
 
 #if defined(USE_CHECKPOINTS)

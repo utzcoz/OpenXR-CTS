@@ -367,6 +367,9 @@ namespace Conformance
         void RenderView(const XrCompositionLayerProjectionView& layerView, const XrSwapchainImageBaseHeader* colorSwapchainImage,
                         const RenderParams& params) override;
 
+        void RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                          const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color) override;
+
         void Flush() override;
 
     protected:
@@ -675,7 +678,38 @@ namespace Conformance
 
     bool D3D12GraphicsPlugin::GetSwapchainCreateTestParameters(int64_t imageFormat, SwapchainCreateTestParameters* swapchainTestParameters)
     {
-        return GetDxgiSwapchainCreateTestParameters(imageFormat, swapchainTestParameters);
+        bool success = GetDxgiSwapchainCreateTestParameters(imageFormat, swapchainTestParameters);
+        if (!success) {
+            return success;
+        }
+
+        /// @todo Conformance::GetDxgiSwapchainTestMap() has no access to our d3d12 objects, therefore remove the wrongly added unordered access here.
+        bool supportsUnorderedAccessStore = false;
+        D3D12_FEATURE_DATA_FORMAT_SUPPORT formatSupport = {(DXGI_FORMAT)imageFormat, D3D12_FORMAT_SUPPORT1_NONE,
+                                                           D3D12_FORMAT_SUPPORT2_NONE};
+        if (SUCCEEDED(d3d12Device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &formatSupport, sizeof(formatSupport)))) {
+            // check specifically for write support
+            if ((formatSupport.Support2 & D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE) != 0) {
+                supportsUnorderedAccessStore = true;
+            }
+        }
+        else {
+            WARN("Failed to check format support.");
+        }
+
+        swapchainTestParameters->usageFlagsVector.erase(
+            std::remove_if(swapchainTestParameters->usageFlagsVector.begin(), swapchainTestParameters->usageFlagsVector.end(),
+                           [&](auto uf) {
+                               if ((uf & XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT) != 0) {
+                                   if (!supportsUnorderedAccessStore) {
+                                       return true;
+                                   }
+                               }
+                               return false;
+                           }),
+            swapchainTestParameters->usageFlagsVector.end());
+
+        return true;
     }
 
     bool D3D12GraphicsPlugin::ValidateSwapchainImages(int64_t /*imageFormat*/, const SwapchainCreateTestParameters* tp,
@@ -1189,6 +1223,45 @@ namespace Conformance
         // and generating images that fail the interactive tests. This did not seem to be the case several
         // months ago, so it likely a driver change that flipped a race condition the other direction.
         WaitForGpu();
+    }
+
+    void D3D12GraphicsPlugin::RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                                           const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color)
+    {
+        (void)layerView;
+        (void)color;
+
+        D3D12SwapchainImageData* swapchainData;
+        uint32_t imageIndex;
+
+        std::tie(swapchainData, imageIndex) = m_swapchainImageDataMap.GetDataAndIndexFromBasePointer(colorSwapchainImage);
+
+        ID3D12Resource* const colorTexture = swapchainData->GetTypedImage(imageIndex).texture;
+        {
+            auto& createInfo = swapchainData->GetCreateInfo();
+
+            D3D12_RESOURCE_FLAGS expectedFlags = D3D12_RESOURCE_FLAG_NONE;
+            D3D12_RESOURCE_STATES expectedState = D3D12_RESOURCE_STATE_COMMON;
+
+            // D3D12_RESOURCE_FLAGS are additive
+            // D3D12_RESOURCE_STATES are mutually exclusive, therefore go in reverse order of precedence
+            if ((createInfo.usageFlags & XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT) != 0) {
+                expectedFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+                expectedState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            }
+            if ((createInfo.usageFlags & XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT) != 0) {
+                expectedFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+                expectedState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+            }
+
+            CAPTURE(expectedFlags);
+            CAPTURE(expectedState);
+            D3D12_RESOURCE_DESC desc = colorTexture->GetDesc();
+            REQUIRE((desc.Flags & expectedFlags) == expectedFlags);
+
+            /// @todo to verify expectedState either we need to find a way to query the D3D12_RESOURCE_STATES of an ID3D12Resource or attempt to render and see if that works.
+        }
+        /// @todo: implement actual rendering
     }
 
     void D3D12GraphicsPlugin::Flush()

@@ -308,6 +308,8 @@ namespace Conformance
 
         void RenderView(const XrCompositionLayerProjectionView& layerView, const XrSwapchainImageBaseHeader* colorSwapchainImage,
                         const RenderParams& params) override;
+        void RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                          const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color) override;
 
     private:
         bool initialized{false};
@@ -1375,6 +1377,15 @@ namespace Conformance
         GL(glUseProgram(0));
         GL(glDisable(GL_SCISSOR_TEST));
         GL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    }
+
+    void OpenGLESGraphicsPlugin::RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                                              const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color)
+    {
+        (void)layerView;
+        (void)colorSwapchainImage;
+        (void)color;
+        /// @todo: implement for OpenGLES
     }
 
 }  // namespace Conformance

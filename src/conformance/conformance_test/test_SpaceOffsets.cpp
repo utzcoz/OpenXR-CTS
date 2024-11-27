@@ -113,7 +113,10 @@ namespace Conformance
 
         CompositionHelper compositionHelper("Space Offsets");
 
-        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
+        XrInstance instance = compositionHelper.GetInstance();
+        XrSession session = compositionHelper.GetSession();
+
+        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
 
         // Set up composition projection layer and swapchains (one swapchain per view).
         std::vector<XrSwapchain> swapchains;
@@ -128,15 +131,17 @@ namespace Conformance
             }
         }
 
-        const std::vector<XrPath> subactionPaths{StringToPath(compositionHelper.GetInstance(), "/user/hand/left"),
-                                                 StringToPath(compositionHelper.GetInstance(), "/user/hand/right")};
+        const std::array<XrPath, 2> subactionPaths{
+            StringToPath(instance, "/user/hand/left"),
+            StringToPath(instance, "/user/hand/right"),
+        };
         XrActionSet actionSet;
         XrAction freezeAction, failAction, gripPoseAction;
         {
             XrActionSetCreateInfo actionSetInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
             strcpy(actionSetInfo.actionSetName, "interaction_test");
             strcpy(actionSetInfo.localizedActionSetName, "Interaction Test");
-            XRC_CHECK_THROW_XRCMD(xrCreateActionSet(compositionHelper.GetInstance(), &actionSetInfo, &actionSet));
+            XRC_CHECK_THROW_XRCMD(xrCreateActionSet(instance, &actionSetInfo, &actionSet));
 
             XrActionCreateInfo actionInfo{XR_TYPE_ACTION_CREATE_INFO};
             actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
@@ -162,24 +167,24 @@ namespace Conformance
         }
 
         const std::vector<XrActionSuggestedBinding> bindings = {
-            {freezeAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/select/click")},
-            {freezeAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/select/click")},
-            {failAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/menu/click")},
-            {failAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/menu/click")},
-            {gripPoseAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/grip/pose")},
-            {gripPoseAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/grip/pose")},
+            {freezeAction, StringToPath(instance, "/user/hand/left/input/select/click")},
+            {freezeAction, StringToPath(instance, "/user/hand/right/input/select/click")},
+            {failAction, StringToPath(instance, "/user/hand/left/input/menu/click")},
+            {failAction, StringToPath(instance, "/user/hand/right/input/menu/click")},
+            {gripPoseAction, StringToPath(instance, "/user/hand/left/input/grip/pose")},
+            {gripPoseAction, StringToPath(instance, "/user/hand/right/input/grip/pose")},
         };
 
         XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
-        suggestedBindings.interactionProfile = StringToPath(compositionHelper.GetInstance(), "/interaction_profiles/khr/simple_controller");
+        suggestedBindings.interactionProfile = StringToPath(instance, "/interaction_profiles/khr/simple_controller");
         suggestedBindings.suggestedBindings = bindings.data();
         suggestedBindings.countSuggestedBindings = (uint32_t)bindings.size();
-        XRC_CHECK_THROW_XRCMD(xrSuggestInteractionProfileBindings(compositionHelper.GetInstance(), &suggestedBindings));
+        XRC_CHECK_THROW_XRCMD(xrSuggestInteractionProfileBindings(instance, &suggestedBindings));
 
         XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
         attachInfo.actionSets = &actionSet;
         attachInfo.countActionSets = 1;
-        XRC_CHECK_THROW_XRCMD(xrAttachSessionActionSets(compositionHelper.GetSession(), &attachInfo));
+        XRC_CHECK_THROW_XRCMD(xrAttachSessionActionSets(session, &attachInfo));
 
         compositionHelper.BeginSession();
 
@@ -254,12 +259,12 @@ namespace Conformance
             spaceCreateInfo.subactionPath = subactionPath;
 
             spaceCreateInfo.poseInActionSpace = Pose::Identity;
-            XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(compositionHelper.GetSession(), &spaceCreateInfo, &handSpaces.spaceWithoutOffset));
+            XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(session, &spaceCreateInfo, &handSpaces.spaceWithoutOffset));
 
             for (XrPosef pose : handRelativePoses) {
                 spaceCreateInfo.poseInActionSpace = pose;
                 XrSpace handSpace;
-                XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(compositionHelper.GetSession(), &spaceCreateInfo, &handSpace));
+                XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(session, &spaceCreateInfo, &handSpace));
                 handSpaces.spaces.emplace_back(pose, handSpace);
             }
             spaces.emplace_back(std::move(handSpaces));
@@ -287,15 +292,14 @@ namespace Conformance
             XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
             syncInfo.activeActionSets = activeActionSets.data();
             syncInfo.countActiveActionSets = (uint32_t)activeActionSets.size();
-            XRC_CHECK_THROW_XRCMD(xrSyncActions(compositionHelper.GetSession(), &syncInfo));
+            XRC_CHECK_THROW_XRCMD(xrSyncActions(session, &syncInfo));
 
             // Check if user has requested to fail the test.
             {
                 XrActionStateGetInfo completeActionGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
                 completeActionGetInfo.action = failAction;
                 XrActionStateBoolean completeActionState{XR_TYPE_ACTION_STATE_BOOLEAN};
-                XRC_CHECK_THROW_XRCMD(
-                    xrGetActionStateBoolean(compositionHelper.GetSession(), &completeActionGetInfo, &completeActionState));
+                XRC_CHECK_THROW_XRCMD(xrGetActionStateBoolean(session, &completeActionGetInfo, &completeActionState));
                 if (completeActionState.currentState == XR_TRUE && completeActionState.changedSinceLastSync) {
                     testFailed = true;
                     return false;
@@ -305,7 +309,7 @@ namespace Conformance
             XrActionStateGetInfo freezeActionGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
             freezeActionGetInfo.action = freezeAction;
             XrActionStateBoolean freezeActionState{XR_TYPE_ACTION_STATE_BOOLEAN};
-            XRC_CHECK_THROW_XRCMD(xrGetActionStateBoolean(compositionHelper.GetSession(), &freezeActionGetInfo, &freezeActionState));
+            XRC_CHECK_THROW_XRCMD(xrGetActionStateBoolean(session, &freezeActionGetInfo, &freezeActionState));
 
             if (testFailed) {
                 postFailureUnfreeze = freezeActionState.currentState;
@@ -586,7 +590,7 @@ namespace Conformance
             return true;
         };
 
-        RenderLoop(compositionHelper.GetSession(), update).Loop();
+        RenderLoop(session, update).Loop();
 
         // The render loop will end if the user waves the controller or if the user presses menu.
         if (testFailed) {

@@ -8,14 +8,14 @@
 
 namespace Conformance
 {
-    struct InputSourcePathAvailData
+    struct BindingPathData
     {
         const char* Path;
         XrActionType Type;
         InteractionProfileAvailability Availability;
         bool systemOnly = false;
     };
-    using InputSourcePathAvailCollection = std::initializer_list<InputSourcePathAvailData>;
+    using BindingPathDataCollection = std::initializer_list<BindingPathData>;
 
     struct InteractionProfileAvailMetadata
     {
@@ -29,15 +29,19 @@ namespace Conformance
 
         /// Index into @ref kInteractionAvailabilities
         InteractionProfileAvailability Availability;
-        InputSourcePathAvailCollection InputSourcePaths;
+        BindingPathDataCollection BindingPaths;
     };
 
     /// Get the generated list of all interaction profiles with availability and other metadata
     const std::vector<InteractionProfileAvailMetadata>& GetAllInteractionProfiles();
+
+    /// Get the generated metadata for a given interaction profile index enumerant.
     inline const InteractionProfileAvailMetadata& GetInteractionProfile(InteractionProfileIndex profile)
     {
         return GetAllInteractionProfiles()[(size_t)profile];
     }
+
+    /// Get the generated metadata for `/interaction_profile/khr/simple_controller`
     inline const InteractionProfileAvailMetadata& GetSimpleInteractionProfile()
     {
         return GetInteractionProfile(InteractionProfileIndex::Profile_khr_simple_controller);

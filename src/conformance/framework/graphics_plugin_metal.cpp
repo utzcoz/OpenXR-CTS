@@ -267,6 +267,9 @@ namespace Conformance
         void RenderView(const XrCompositionLayerProjectionView& layerView, const XrSwapchainImageBaseHeader* colorSwapchainImage,
                         const RenderParams& params) override;
 
+        void RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                          const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color) override;
+
     private:
         bool m_initialized{false};
         XrGraphicsBindingMetalKHR m_graphicsBinding{XR_TYPE_GRAPHICS_BINDING_METAL_KHR};
@@ -934,6 +937,15 @@ namespace Conformance
 
         pEnc->endEncoding();
         pCmd->commit();
+    }
+
+    void MetalGraphicsPlugin::RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                                           const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color)
+    {
+        (void)layerView;
+        (void)colorSwapchainImage;
+        (void)color;
+        /// @todo: implement for Metal
     }
 
     // Private methods

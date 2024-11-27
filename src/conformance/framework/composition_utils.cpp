@@ -612,7 +612,7 @@ namespace Conformance
     }
 
     BaseProjectionLayerHelper::BaseProjectionLayerHelper(CompositionHelper& compositionHelper, XrReferenceSpaceType spaceType)
-        : m_compositionHelper(compositionHelper), m_localSpace(compositionHelper.CreateReferenceSpace(spaceType, Pose::Identity))
+        : m_compositionHelper(compositionHelper), m_localSpace(compositionHelper.CreateReferenceSpace(spaceType))
     {
         const std::vector<XrViewConfigurationView> viewProperties = compositionHelper.EnumerateConfigurationViews();
 

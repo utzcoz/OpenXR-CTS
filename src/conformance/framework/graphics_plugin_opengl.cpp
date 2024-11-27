@@ -437,6 +437,9 @@ namespace Conformance
         void RenderView(const XrCompositionLayerProjectionView& layerView, const XrSwapchainImageBaseHeader* colorSwapchainImage,
                         const RenderParams& params) override;
 
+        void RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                          const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color) override;
+
     private:
         bool initialized = false;
         bool deviceInitialized = false;
@@ -1196,6 +1199,15 @@ namespace Conformance
         glBindVertexArray(0);
         glUseProgram(0);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    void OpenGLGraphicsPlugin::RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                                            const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color)
+    {
+        (void)layerView;
+        (void)colorSwapchainImage;
+        (void)color;
+        /// @todo: implement for OpenGL
     }
 
     std::shared_ptr<IGraphicsPlugin> CreateGraphicsPlugin_OpenGL(std::shared_ptr<IPlatformPlugin> platformPlugin)

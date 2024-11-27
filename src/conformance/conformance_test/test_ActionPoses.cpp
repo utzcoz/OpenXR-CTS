@@ -22,6 +22,7 @@
 #include "utilities/stringification.h"
 #include "utilities/throw_helpers.h"
 #include "utilities/types_and_constants.h"
+#include "utilities/xr_math_operators.h"
 
 #include <openxr/openxr.h>
 #include <catch2/catch_test_macros.hpp>
@@ -36,9 +37,6 @@
 #include <vector>
 
 using namespace Conformance;
-
-// Useful to track down errors when debugging stateful graphics APIs like OpenGL:
-#define CHKGR() GetGlobalData().graphicsPlugin->CheckState(XRC_FILE_AND_LINE)
 
 namespace Conformance
 {
@@ -59,8 +57,9 @@ namespace Conformance
             "Press menu to complete the validation.";
 
         CompositionHelper compositionHelper("Grip and Aim Pose");
-
-        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
+        XrInstance instance = compositionHelper.GetInstance();
+        XrSession session = compositionHelper.GetSession();
+        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
 
         // Set up composition projection layer and swapchains (one swapchain per view).
         std::vector<XrSwapchain> swapchains;
@@ -89,19 +88,22 @@ namespace Conformance
             std::vector<SpaceCube> pointerCubes;
         };
 
-        Hand hands[2];
-        hands[0].subactionPath = StringToPath(compositionHelper.GetInstance(), "/user/hand/left");
-        hands[1].subactionPath = StringToPath(compositionHelper.GetInstance(), "/user/hand/right");
+        Hand hands[2] = {};
+        hands[0].subactionPath = StringToPath(instance, "/user/hand/left");
+        hands[1].subactionPath = StringToPath(instance, "/user/hand/right");
 
         // Set up the actions.
-        const std::array<XrPath, 2> subactionPaths{hands[0].subactionPath, hands[1].subactionPath};
+        const std::array<XrPath, 2> subactionPaths{
+            hands[0].subactionPath,
+            hands[1].subactionPath,
+        };
         XrActionSet actionSet;
         XrAction completeAction, switchHandsAction, gripPoseAction, aimPoseAction;
         {
             XrActionSetCreateInfo actionSetInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
             strcpy(actionSetInfo.actionSetName, "interaction_test");
             strcpy(actionSetInfo.localizedActionSetName, "Interaction Test");
-            XRC_CHECK_THROW_XRCMD(xrCreateActionSet(compositionHelper.GetInstance(), &actionSetInfo, &actionSet));
+            XRC_CHECK_THROW_XRCMD(xrCreateActionSet(instance, &actionSetInfo, &actionSet));
 
             XrActionCreateInfo actionInfo{XR_TYPE_ACTION_CREATE_INFO};
             actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
@@ -132,45 +134,45 @@ namespace Conformance
         }
 
         const std::vector<XrActionSuggestedBinding> bindings = {
-            {completeAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/menu/click")},
-            {completeAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/menu/click")},
-            {switchHandsAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/select/click")},
-            {switchHandsAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/select/click")},
-            {gripPoseAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/grip/pose")},
-            {gripPoseAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/grip/pose")},
-            {aimPoseAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/aim/pose")},
-            {aimPoseAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/aim/pose")},
+            {completeAction, StringToPath(instance, "/user/hand/left/input/menu/click")},
+            {completeAction, StringToPath(instance, "/user/hand/right/input/menu/click")},
+            {switchHandsAction, StringToPath(instance, "/user/hand/left/input/select/click")},
+            {switchHandsAction, StringToPath(instance, "/user/hand/right/input/select/click")},
+            {gripPoseAction, StringToPath(instance, "/user/hand/left/input/grip/pose")},
+            {gripPoseAction, StringToPath(instance, "/user/hand/right/input/grip/pose")},
+            {aimPoseAction, StringToPath(instance, "/user/hand/left/input/aim/pose")},
+            {aimPoseAction, StringToPath(instance, "/user/hand/right/input/aim/pose")},
         };
 
         XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
-        suggestedBindings.interactionProfile = StringToPath(compositionHelper.GetInstance(), "/interaction_profiles/khr/simple_controller");
+        suggestedBindings.interactionProfile = StringToPath(instance, "/interaction_profiles/khr/simple_controller");
         suggestedBindings.suggestedBindings = bindings.data();
         suggestedBindings.countSuggestedBindings = (uint32_t)bindings.size();
-        XRC_CHECK_THROW_XRCMD(xrSuggestInteractionProfileBindings(compositionHelper.GetInstance(), &suggestedBindings));
+        XRC_CHECK_THROW_XRCMD(xrSuggestInteractionProfileBindings(instance, &suggestedBindings));
 
         XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
         attachInfo.actionSets = &actionSet;
         attachInfo.countActionSets = 1;
-        XRC_CHECK_THROW_XRCMD(xrAttachSessionActionSets(compositionHelper.GetSession(), &attachInfo));
+        XRC_CHECK_THROW_XRCMD(xrAttachSessionActionSets(session, &attachInfo));
 
         compositionHelper.BeginSession();
 
         // Create the instructional quad layer placed to the left bottom.
         XrCompositionLayerQuad* const instructionsQuad =
             compositionHelper.CreateQuadLayer(compositionHelper.CreateStaticSwapchainImage(CreateTextImage(1024, 512, instructions, 48)),
-                                              localSpace, 1.0f, {{0, 0, 0, 1}, {-1.5f, -0.33f, -0.3f}});
+                                              localSpace, 1.0f, {Quat::Identity, {-1.5f, -0.33f, -0.3f}});
         instructionsQuad->pose.orientation = Quat::FromAxisAngle(Up, DegToRad(70));
 
         // Create the diagram quad layer placed to the left top.
         XrCompositionLayerQuad* const diagramQuad =
             compositionHelper.CreateQuadLayer(compositionHelper.CreateStaticSwapchainImage(RGBAImage::Load(diagramImage)), localSpace, 1.0f,
-                                              {{0, 0, 0, 1}, {-1.5f, 0.33f, -0.3f}});
+                                              {Quat::Identity, {-1.5f, 0.33f, -0.3f}});
         diagramQuad->pose.orientation = Quat::FromAxisAngle(Up, DegToRad(70));
 
         // Create a sample image quad layer placed to the right.
         XrCompositionLayerQuad* const exampleQuad =
             compositionHelper.CreateQuadLayer(compositionHelper.CreateStaticSwapchainImage(RGBAImage::Load(exampleImage)), localSpace,
-                                              1.25f, {{0, 0, 0, 1}, {1.5f, 0, -0.3f}});
+                                              1.25f, {Quat::Identity, {1.5f, 0, -0.3f}});
         exampleQuad->pose.orientation = Quat::FromAxisAngle(Up, DegToRad(-70));
 
         const float PointerLength = 4.00f;
@@ -195,8 +197,8 @@ namespace Conformance
                 XrActionSpaceCreateInfo spaceCreateInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
                 spaceCreateInfo.subactionPath = hand.subactionPath;
                 spaceCreateInfo.action = poseAction;
-                spaceCreateInfo.poseInActionSpace = {{0, 0, 0, 1}, poseInSpacePos};
-                XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(compositionHelper.GetSession(), &spaceCreateInfo, &spaceCube.space));
+                spaceCreateInfo.poseInActionSpace = {Quat::Identity, poseInSpacePos};
+                XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(session, &spaceCreateInfo, &spaceCube.space));
                 spaceCubes.push_back(std::move(spaceCube));
             };
 
@@ -227,15 +229,14 @@ namespace Conformance
             XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
             syncInfo.activeActionSets = activeActionSets.data();
             syncInfo.countActiveActionSets = (uint32_t)activeActionSets.size();
-            XRC_CHECK_THROW_XRCMD(xrSyncActions(compositionHelper.GetSession(), &syncInfo));
+            XRC_CHECK_THROW_XRCMD(xrSyncActions(session, &syncInfo));
 
             // Check if user has requested to complete the test.
             {
                 XrActionStateGetInfo completeActionGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
                 completeActionGetInfo.action = completeAction;
                 XrActionStateBoolean completeActionState{XR_TYPE_ACTION_STATE_BOOLEAN};
-                XRC_CHECK_THROW_XRCMD(
-                    xrGetActionStateBoolean(compositionHelper.GetSession(), &completeActionGetInfo, &completeActionState));
+                XRC_CHECK_THROW_XRCMD(xrGetActionStateBoolean(session, &completeActionGetInfo, &completeActionState));
                 if (completeActionState.currentState == XR_TRUE && completeActionState.changedSinceLastSync) {
                     return false;
                 }
@@ -259,7 +260,7 @@ namespace Conformance
                 swapActionGetInfo.action = switchHandsAction;
                 swapActionGetInfo.subactionPath = hand.subactionPath;
                 XrActionStateBoolean swapActionState{XR_TYPE_ACTION_STATE_BOOLEAN};
-                XRC_CHECK_THROW_XRCMD(xrGetActionStateBoolean(compositionHelper.GetSession(), &swapActionGetInfo, &swapActionState));
+                XRC_CHECK_THROW_XRCMD(xrGetActionStateBoolean(session, &swapActionGetInfo, &swapActionState));
                 if (swapActionState.currentState == XR_TRUE && swapActionState.changedSinceLastSync) {
                     pointerHand = hand.subactionPath;
                 }
@@ -282,15 +283,13 @@ namespace Conformance
 
                 // Render into each of the separate swapchains using the projection layer view fov and pose.
                 for (size_t view = 0; view < views.size(); view++) {
-                    compositionHelper.AcquireWaitReleaseImage(swapchains[view],  //
-                                                              [&](const XrSwapchainImageBaseHeader* swapchainImage) {
-                                                                  GetGlobalData().graphicsPlugin->ClearImageSlice(swapchainImage);
-                                                                  const_cast<XrFovf&>(projLayer->views[view].fov) = views[view].fov;
-                                                                  const_cast<XrPosef&>(projLayer->views[view].pose) = views[view].pose;
-                                                                  GetGlobalData().graphicsPlugin->RenderView(
-                                                                      projLayer->views[view], swapchainImage,
-                                                                      RenderParams().Draw(renderedCubes));
-                                                              });
+                    compositionHelper.AcquireWaitReleaseImage(swapchains[view], [&](const XrSwapchainImageBaseHeader* swapchainImage) {
+                        GetGlobalData().graphicsPlugin->ClearImageSlice(swapchainImage);
+                        const_cast<XrFovf&>(projLayer->views[view].fov) = views[view].fov;
+                        const_cast<XrPosef&>(projLayer->views[view].pose) = views[view].pose;
+                        GetGlobalData().graphicsPlugin->RenderView(projLayer->views[view], swapchainImage,
+                                                                   RenderParams().Draw(renderedCubes));
+                    });
                 }
 
                 layers.push_back({reinterpret_cast<XrCompositionLayerBaseHeader*>(projLayer)});
@@ -306,6 +305,6 @@ namespace Conformance
             return true;
         };
 
-        RenderLoop(compositionHelper.GetSession(), update).Loop();
+        RenderLoop(session, update).Loop();
     }
 }  // namespace Conformance

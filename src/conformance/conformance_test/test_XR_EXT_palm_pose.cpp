@@ -26,6 +26,7 @@
 #include "utilities/types_and_constants.h"
 #include "utilities/utils.h"
 #include "availability_helper.h"
+#include "utilities/xr_math_operators.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <openxr/openxr.h>
@@ -77,7 +78,7 @@ namespace Conformance
             XrInstance instance = compositionHelper.GetInstance();
             XrSession session = compositionHelper.GetSession();
 
-            const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
+            const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
 
             // Set up composition projection layer and swapchains (one swapchain per view).
             std::vector<XrSwapchain> swapchains;
@@ -111,7 +112,10 @@ namespace Conformance
             hands[1].subactionPath = StringToPath(instance, "/user/hand/right");
 
             // Set up the actions.
-            const std::array<XrPath, 2> subactionPaths{hands[0].subactionPath, hands[1].subactionPath};
+            const std::array<XrPath, 2> subactionPaths{
+                hands[0].subactionPath,
+                hands[1].subactionPath,
+            };
             XrActionSet actionSet;
             XrAction completeAction, switchHandsAction, gripSurfacePoseAction;
             {
@@ -176,13 +180,13 @@ namespace Conformance
             // Create the instructional quad layer placed to the left.
             XrCompositionLayerQuad* const instructionsQuad = compositionHelper.CreateQuadLayer(
                 compositionHelper.CreateStaticSwapchainImage(CreateTextImage(1024, 512, instructions.str().c_str(), 48)), localSpace, 1.0f,
-                {{0, 0, 0, 1}, {-1.5f, 0, -0.3f}});
+                {Quat::Identity, {-1.5f, 0, -0.3f}});
             instructionsQuad->pose.orientation = Quat::FromAxisAngle(Up, DegToRad(70));
 
             // Create a sample image quad layer placed to the right.
             XrCompositionLayerQuad* const exampleQuad =
                 compositionHelper.CreateQuadLayer(compositionHelper.CreateStaticSwapchainImage(RGBAImage::Load(exampleImage)), localSpace,
-                                                  1.25f, {{0, 0, 0, 1}, {1.5f, 0, -0.3f}});
+                                                  1.25f, {Quat::Identity, {1.5f, 0, -0.3f}});
             exampleQuad->pose.orientation = Quat::FromAxisAngle(Up, -DegToRad(70));
 
             // const float PointerLength = 4.00f;
@@ -423,15 +427,13 @@ namespace Conformance
 
                     // Render into each of the separate swapchains using the projection layer view fov and pose.
                     for (size_t view = 0; view < views.size(); view++) {
-                        compositionHelper.AcquireWaitReleaseImage(swapchains[view],  //
-                                                                  [&](const XrSwapchainImageBaseHeader* swapchainImage) {
-                                                                      GetGlobalData().graphicsPlugin->ClearImageSlice(swapchainImage);
-                                                                      const_cast<XrFovf&>(projLayer->views[view].fov) = views[view].fov;
-                                                                      const_cast<XrPosef&>(projLayer->views[view].pose) = views[view].pose;
-                                                                      GetGlobalData().graphicsPlugin->RenderView(
-                                                                          projLayer->views[view], swapchainImage,
-                                                                          RenderParams().Draw(renderedCubes));
-                                                                  });
+                        compositionHelper.AcquireWaitReleaseImage(swapchains[view], [&](const XrSwapchainImageBaseHeader* swapchainImage) {
+                            GetGlobalData().graphicsPlugin->ClearImageSlice(swapchainImage);
+                            const_cast<XrFovf&>(projLayer->views[view].fov) = views[view].fov;
+                            const_cast<XrPosef&>(projLayer->views[view].pose) = views[view].pose;
+                            GetGlobalData().graphicsPlugin->RenderView(projLayer->views[view], swapchainImage,
+                                                                       RenderParams().Draw(renderedCubes));
+                        });
                     }
 
                     layers.push_back({reinterpret_cast<XrCompositionLayerBaseHeader*>(projLayer)});
@@ -480,8 +482,10 @@ namespace Conformance
 
             auto makeActionSuggestedBindings = [&](XrInstance instance, bool testExtension) -> const std::vector<XrActionSuggestedBinding> {
                 // Set up the actions.
-                const std::array<XrPath, 2> subactionPaths{StringToPath(instance, "/user/hand/left"),
-                                                           StringToPath(instance, "/user/hand/right")};
+                const std::array<XrPath, 2> subactionPaths{
+                    StringToPath(instance, "/user/hand/left"),
+                    StringToPath(instance, "/user/hand/right"),
+                };
 
                 {
                     XrActionSetCreateInfo actionSetInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
@@ -589,10 +593,10 @@ namespace Conformance
 
             std::shared_ptr<IInputTestDevice> leftHandInputDevice =
                 CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, compositionHelper.GetSession(),
-                                 simpleInteractionProfile, handPaths[0], GetSimpleInteractionProfile().InputSourcePaths);
+                                 simpleInteractionProfile, handPaths[0], GetSimpleInteractionProfile().BindingPaths);
             std::shared_ptr<IInputTestDevice> rightHandInputDevice =
                 CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, compositionHelper.GetSession(),
-                                 simpleInteractionProfile, handPaths[1], GetSimpleInteractionProfile().InputSourcePaths);
+                                 simpleInteractionProfile, handPaths[1], GetSimpleInteractionProfile().BindingPaths);
 
             // gripPoseAction and gripSurfacePoseAction are populated here
             const std::vector<XrActionSuggestedBinding> bindings = makeActionSuggestedBindings(instance, testExtension);

@@ -23,8 +23,10 @@
 #include "utilities/system_properties_helper.h"
 #include "common/xr_linear.h"
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 
 using namespace Conformance;
+namespace chrono = std::chrono;
 
 namespace Conformance
 {
@@ -198,9 +200,9 @@ namespace Conformance
             }
         }
 
-        SECTION("Combine eye gaze with another input source - simple controller")
+        SECTION("Combine eye gaze with another input - simple controller")
         {
-            // Verify that eye gaze interaction input can be combined with other input sources.
+            // Verify that eye gaze interaction input can be combined with other inputs.
             // Use Simple Controller profile as opposed to vendor-specific inputs for broader coverage.
 
             AutoBasicInstance instance({XR_EXT_EYE_GAZE_INTERACTION_EXTENSION_NAME});
@@ -416,8 +418,8 @@ namespace Conformance
         attachInfo.countActionSets = 1;
         REQUIRE_RESULT(XR_SUCCESS, xrAttachSessionActionSets(compositionHelper.GetSession(), &attachInfo));
 
-        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
-        const XrSpace viewSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_VIEW, Pose::Identity);
+        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
+        const XrSpace viewSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_VIEW);
 
         XrActionSpaceCreateInfo createActionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
         createActionSpaceInfo.action = gazeAction;
@@ -430,7 +432,8 @@ namespace Conformance
             const char* instructions =
                 "A ray should point in the direction of eye gaze. "
                 "Two small cubes are rendered in the environment. "
-                "Bring your head to one of these cubes to complete the validation. ";
+                "Bring your head to one of these cubes to complete the validation "
+                "or close your eyes for ten seconds to fail the test.";
 
             // Set up composition projection layer and swapchains (one swapchain per view).
             std::vector<XrSwapchain> swapchains;
@@ -455,6 +458,8 @@ namespace Conformance
             instructionsQuad->pose.orientation = Quat::FromAxisAngle(kVectorUp, DegToRad(70));
 
             bool eyeGazeSampleTimeFound = false;
+            auto lastTrackedGaze = chrono::steady_clock::now();
+            const int blinkTimout = 10;
             auto update = [&](const XrFrameState& frameState) {
                 std::vector<Cube> renderedCubes;
 
@@ -471,8 +476,15 @@ namespace Conformance
                     renderedCubes.push_back(Cube::Make(staticCubeLocs[i], staticCubeScale));
                 }
 
-                // Check if user has requested to complete the test.
+                // Check if user has requested to complete or fail the test.
                 {
+                    // Check if the user closed eyes (or otherwise lost gaze tracking) for ten seconds
+                    const auto lostGazeDuration = chrono::duration_cast<chrono::seconds>(chrono::steady_clock::now() - lastTrackedGaze);
+                    if (lostGazeDuration.count() > blinkTimout) {
+                        FAIL("Test failed by user request");
+                    }
+
+                    // Check if user has brought the head to the cubes
                     if (viewLoc.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) {
                         const XrVector3f& headPosition = viewLoc.pose.position;
                         for (size_t i = 0; i < staticCubeLocs.size(); ++i) {
@@ -512,6 +524,12 @@ namespace Conformance
                     if (gazeLocation.locationFlags & spaceTrackedBits) {
                         REQUIRE(spaceTrackedBits == (gazeLocation.locationFlags & spaceTrackedBits));
                     }
+
+                    // Check if eyes were tracked and reset timeout
+                    if ((gazeLocation.locationFlags & XR_SPACE_LOCATION_POSITION_TRACKED_BIT) == XR_SPACE_LOCATION_POSITION_TRACKED_BIT) {
+                        lastTrackedGaze = chrono::steady_clock::now();
+                    }
+
                     // If at least orientation is valid, show a ray representing the gaze
                     if (gazeLocation.locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT) {
                         // The sample time must be set

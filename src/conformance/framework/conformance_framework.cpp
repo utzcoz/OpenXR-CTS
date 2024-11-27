@@ -31,6 +31,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <inttypes.h>
 #include <mutex>
 #include <sstream>
 #include <thread>
@@ -108,7 +109,7 @@ namespace Conformance
         GlobalData& globalData = GetGlobalData();
         std::string reportString;
 
-        AppendSprintf(reportString, "Random seed used: %llu\n", globalData.randEngine.GetSeed());
+        AppendSprintf(reportString, "Random seed used: %" PRIu64 "\n", globalData.randEngine.GetSeed());
         AppendSprintf(reportString, "API version: %u.%u.%u\n", XR_VERSION_MAJOR(apiVersion), XR_VERSION_MINOR(apiVersion),
                       XR_VERSION_PATCH(apiVersion));
         AppendSprintf(reportString, "Graphics system: %s\n", globalData.options.graphicsPlugin.c_str());
@@ -133,8 +134,8 @@ namespace Conformance
         AppendSprintf(reportString, "Handle invalidation tested: %s\n", globalData.options.invalidHandleValidation ? "yes" : "no");
         AppendSprintf(reportString, "Type invalidation tested: %s\n", globalData.options.invalidTypeValidation ? "yes" : "no");
         AppendSprintf(reportString, "Non-disconnectable devices: %s\n", globalData.options.nonDisconnectableDevices ? "yes" : "no");
-        AppendSprintf(reportString, "Test Success Count: %zu\n", TestSuccessCount());
-        AppendSprintf(reportString, "Test Failure Count: %zu\n", TestFailureCount());
+        AppendSprintf(reportString, "Test Success Count: %zu\n", static_cast<size_t>(TestSuccessCount()));
+        AppendSprintf(reportString, "Test Failure Count: %zu\n", static_cast<size_t>(TestFailureCount()));
         if (TestFailureCount() > 0) {
             AppendSprintf(reportString, "Tests with failures:\n");
             for (auto const& pair : results) {

@@ -1,0 +1,1 @@
+- Improvement: Add example image for _Anisotropy Barn Lamp_ self-test

@@ -435,8 +435,8 @@ namespace Conformance
                     }});
             }
 
-            m_viewSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_VIEW, XrPosef{{0, 0, 0, 1}, {0, 0, 0}});
-            m_localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, XrPosef{{0, 0, 0, 1}, {0, 0, 0}});
+            m_viewSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_VIEW);
+            m_localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
 
             // description quad to the left, example image quad to the right, counter-rotated 15 degrees towards the viewer
             m_descriptionQuadSpace = compositionHelper.CreateReferenceSpace(
