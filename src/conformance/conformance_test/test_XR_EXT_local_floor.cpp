@@ -163,7 +163,6 @@ namespace Conformance
     static inline void SharedLocalFloorAutomated(const FeatureSet& featureSet)
     {
         GlobalData& globalData = GetGlobalData();
-        const std::vector<const char*> extensions = SkipOrGetExtensions("Local floor", globalData, featureSet);
 
         // See if it is explicitly enabled by default
         FeatureSet enabled;
@@ -179,6 +178,9 @@ namespace Conformance
                 REQUIRE_THAT(refSpaceTypes, !Catch::Matchers::VectorContains(XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR_EXT));
             }
         }
+
+        // Skip after the "Requirements not enabled" tests, so that unavailability of LOCAL_FLOOR on OpenXR 1.0 is tested before the skip.
+        const std::vector<const char*> extensions = SkipOrGetExtensions("Local floor", globalData, featureSet);
 
         SECTION("Validate creation")
         {

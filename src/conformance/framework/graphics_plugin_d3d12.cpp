@@ -339,11 +339,11 @@ namespace Conformance
                                      uint32_t* imageCount) const override;
         bool ValidateSwapchainImageState(XrSwapchain swapchain, uint32_t index, int64_t imageFormat) const override;
 
-        int64_t SelectColorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectColorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
-        int64_t SelectDepthSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectDepthSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
-        int64_t SelectMotionVectorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectMotionVectorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
         // Format required by RGBAImage type.
         int64_t GetSRGBA8Format() const override;
@@ -819,56 +819,44 @@ namespace Conformance
     }
 
     // Select the preferred swapchain format from the list of available formats.
-    int64_t D3D12GraphicsPlugin::SelectColorSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t D3D12GraphicsPlugin::SelectColorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
         // List of supported color swapchain formats.
-        const std::array<DXGI_FORMAT, 4> f{DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_R8G8B8A8_UNORM,
-                                           DXGI_FORMAT_B8G8R8A8_UNORM};
-
-        span<const int64_t> formatArraySpan{formatArray, count};
-        auto it = std::find_first_of(formatArraySpan.begin(), formatArraySpan.end(), f.begin(), f.end());
-
-        if (it == formatArraySpan.end()) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
-        }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+                DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,
+                DXGI_FORMAT_R8G8B8A8_UNORM,
+                DXGI_FORMAT_B8G8R8A8_UNORM,
+            });
     }
 
     // Select the preferred swapchain format from the list of available formats.
-    int64_t D3D12GraphicsPlugin::SelectDepthSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t D3D12GraphicsPlugin::SelectDepthSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
         // List of supported depth swapchain formats.
-        const std::array<DXGI_FORMAT, 4> f{DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_D24_UNORM_S8_UINT, DXGI_FORMAT_D16_UNORM,
-                                           DXGI_FORMAT_D32_FLOAT_S8X24_UINT};
-
-        span<const int64_t> formatArraySpan{formatArray, count};
-        auto it = std::find_first_of(formatArraySpan.begin(), formatArraySpan.end(), f.begin(), f.end());
-
-        if (it == formatArraySpan.end()) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
-        }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                DXGI_FORMAT_D32_FLOAT,
+                DXGI_FORMAT_D24_UNORM_S8_UINT,
+                DXGI_FORMAT_D16_UNORM,
+                DXGI_FORMAT_D32_FLOAT_S8X24_UINT,
+            });
     }
 
     // Select the preferred swapchain format from the list of available formats.
-    int64_t D3D12GraphicsPlugin::SelectMotionVectorSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t D3D12GraphicsPlugin::SelectMotionVectorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
-        // List of swapchain formats suitable for motion vectors.
-        const std::array<DXGI_FORMAT, 2> f{DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_R32G32B32_FLOAT};
-
-        span<const int64_t> formatArraySpan{formatArray, count};
-        auto it = std::find_first_of(formatArraySpan.begin(), formatArraySpan.end(), f.begin(), f.end());
-
-        if (it == formatArraySpan.end()) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
+        // Implementation must select a signed format with four components unless there are none with alpha.
+        int64_t alphaFormat = SelectSwapchainFormat(  //
+            false, imageFormatArray, {DXGI_FORMAT_R16G16B16A16_FLOAT});
+        if (alphaFormat != -1) {
+            return alphaFormat;
         }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray, {DXGI_FORMAT_R32G32B32_FLOAT});
     }
 
     int64_t D3D12GraphicsPlugin::GetSRGBA8Format() const

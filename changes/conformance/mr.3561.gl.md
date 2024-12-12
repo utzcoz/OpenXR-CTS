@@ -1,1 +1,0 @@
-- Improvement: Rename types, fields, and variables to use the term "binding path" when appropriate. In the past these have sometimes been confusingly called "input sources" despite being unrelated to the paths returned from `xrEnumerateBoundSourcesForAction` and passed to `xrGetInputSourceLocalizedName`.

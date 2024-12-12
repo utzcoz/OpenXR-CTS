@@ -239,11 +239,11 @@ namespace Conformance
 
         bool ValidateSwapchainImageState(XrSwapchain swapchain, uint32_t index, int64_t imageFormat) const override;
 
-        int64_t SelectColorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectColorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
-        int64_t SelectDepthSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectDepthSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
-        int64_t SelectMotionVectorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectMotionVectorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
         // Format required by RGBAImage type.
         int64_t GetSRGBA8Format() const override;
@@ -649,55 +649,42 @@ namespace Conformance
         return true;
     }
 
-    int64_t MetalGraphicsPlugin::SelectColorSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t MetalGraphicsPlugin::SelectColorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
         // List of supported color swapchain formats.
-        const std::array<MTL::PixelFormat, 4> f{MTL::PixelFormatRGBA8Unorm_sRGB, MTL::PixelFormatBGRA8Unorm_sRGB,
-                                                MTL::PixelFormatRGBA8Unorm, MTL::PixelFormatBGRA8Unorm};
-
-        span<const int64_t> formatArraySpan{formatArray, count};
-        auto it = std::find_first_of(formatArraySpan.begin(), formatArraySpan.end(), f.begin(), f.end());
-
-        if (it == formatArraySpan.end()) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
-        }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                MTL::PixelFormatRGBA8Unorm_sRGB,
+                MTL::PixelFormatBGRA8Unorm_sRGB,
+                MTL::PixelFormatRGBA8Unorm,
+                MTL::PixelFormatBGRA8Unorm,
+            });
     }
 
-    int64_t MetalGraphicsPlugin::SelectDepthSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t MetalGraphicsPlugin::SelectDepthSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
         // List of supported depth swapchain formats.
-        const std::array<MTL::PixelFormat, 4> f{MTL::PixelFormatDepth32Float, MTL::PixelFormatDepth24Unorm_Stencil8,
-                                                MTL::PixelFormatDepth16Unorm, MTL::PixelFormatDepth32Float_Stencil8};
-
-        span<const int64_t> formatArraySpan{formatArray, count};
-        auto it = std::find_first_of(formatArraySpan.begin(), formatArraySpan.end(), f.begin(), f.end());
-
-        if (it == formatArraySpan.end()) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
-        }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                MTL::PixelFormatDepth32Float,
+                MTL::PixelFormatDepth24Unorm_Stencil8,
+                MTL::PixelFormatDepth16Unorm,
+                MTL::PixelFormatDepth32Float_Stencil8,
+            });
     }
 
     // Select the preferred swapchain format from the list of available formats.
-    int64_t MetalGraphicsPlugin::SelectMotionVectorSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t MetalGraphicsPlugin::SelectMotionVectorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
         // List of swapchain formats suitable for motion vectors.
-        const std::array<MTL::PixelFormat, 2> f{MTL::PixelFormatRGBA16Float, MTL::PixelFormatRGBA32Float};
-
-        span<const int64_t> formatArraySpan{formatArray, count};
-        auto it = std::find_first_of(formatArraySpan.begin(), formatArraySpan.end(), f.begin(), f.end());
-
-        if (it == formatArraySpan.end()) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
-        }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                MTL::PixelFormatRGBA16Float,
+                MTL::PixelFormatRGBA32Float,
+            });
     }
 
     int64_t MetalGraphicsPlugin::GetSRGBA8Format() const

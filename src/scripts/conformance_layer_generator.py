@@ -30,10 +30,14 @@ MANUALLY_DEFINED_IN_LAYER = [
 def make_ext_variable_name(extName):
     return extName.lower()[3:]
 
+def make_version_variable_name(extName):
+    return f"version_{extName.lower()[-3:]}_compatible"
+
 
 def make_environment():
     env = make_jinja_environment(file_with_templates_as_sibs=__file__)
     env.filters['make_ext_variable_name'] = make_ext_variable_name
+    env.filters['make_version_variable_name'] = make_version_variable_name
     return env
 
 

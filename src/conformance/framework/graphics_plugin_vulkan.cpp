@@ -559,8 +559,8 @@ namespace Conformance
             XRC_CHECK_THROW_VKCMD(namer.SetName(VK_OBJECT_TYPE_BUFFER, (uint64_t)m_DrawBuffer.idx.buf, "CTS mesh draw index buffer"));
             XRC_CHECK_THROW_VKCMD(namer.SetName(VK_OBJECT_TYPE_BUFFER, (uint64_t)m_DrawBuffer.vtx.buf, "CTS mesh draw vertex buffer"));
 
-            m_DrawBuffer.UpdateIndices(nonstd::span<const uint16_t>(idx_data, idx_count), 0);
-            m_DrawBuffer.UpdateVertices(nonstd::span<const Geometry::Vertex>(vtx_data, vtx_count), 0);
+            m_DrawBuffer.UpdateIndices(span<const uint16_t>(idx_data, idx_count), 0);
+            m_DrawBuffer.UpdateVertices(span<const Geometry::Vertex>(vtx_data, vtx_count), 0);
         }
 
         VulkanMesh(VulkanMesh&& other) noexcept
@@ -658,11 +658,11 @@ namespace Conformance
                                      uint32_t* imageCount) const override;
         bool ValidateSwapchainImageState(XrSwapchain swapchain, uint32_t index, int64_t imageFormat) const override;
 
-        int64_t SelectColorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectColorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
-        int64_t SelectDepthSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectDepthSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
-        int64_t SelectMotionVectorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectMotionVectorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
         // Format required by RGBAImage type.
         int64_t GetSRGBA8Format() const override;
@@ -1762,56 +1762,44 @@ namespace Conformance
     }
 
     // Select the preferred swapchain format from the list of available formats.
-    int64_t VulkanGraphicsPlugin::SelectColorSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t VulkanGraphicsPlugin::SelectColorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
         // List of supported color swapchain formats.
-        const std::array<VkFormat, 4> f{VK_FORMAT_R8G8B8A8_SRGB, VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_R8G8B8A8_UNORM,
-                                        VK_FORMAT_B8G8R8A8_UNORM};
-
-        span<const int64_t> formatArraySpan{formatArray, count};
-        auto it = std::find_first_of(formatArraySpan.begin(), formatArraySpan.end(), f.begin(), f.end());
-
-        if (it == formatArraySpan.end()) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
-        }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                VK_FORMAT_R8G8B8A8_SRGB,
+                VK_FORMAT_B8G8R8A8_SRGB,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                VK_FORMAT_B8G8R8A8_UNORM,
+            });
     }
 
     // Select the preferred swapchain format from the list of available formats.
-    int64_t VulkanGraphicsPlugin::SelectDepthSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t VulkanGraphicsPlugin::SelectDepthSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
         // List of supported depth swapchain formats.
-        const std::array<VkFormat, 4> f{VK_FORMAT_D32_SFLOAT, VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D16_UNORM,
-                                        VK_FORMAT_D32_SFLOAT_S8_UINT};
-
-        span<const int64_t> formatArraySpan{formatArray, count};
-        auto it = std::find_first_of(formatArraySpan.begin(), formatArraySpan.end(), f.begin(), f.end());
-
-        if (it == formatArraySpan.end()) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
-        }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                VK_FORMAT_D32_SFLOAT,
+                VK_FORMAT_D24_UNORM_S8_UINT,
+                VK_FORMAT_D16_UNORM,
+                VK_FORMAT_D32_SFLOAT_S8_UINT,
+            });
     }
 
     // Select the preferred swapchain format from the list of available formats.
-    int64_t VulkanGraphicsPlugin::SelectMotionVectorSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t VulkanGraphicsPlugin::SelectMotionVectorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
-        // List of supported swapchain formats suitable for motion vectors.
-        const std::array<VkFormat, 2> f{VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R16G16B16_SFLOAT};
-
-        span<const int64_t> formatArraySpan{formatArray, count};
-        auto it = std::find_first_of(formatArraySpan.begin(), formatArraySpan.end(), f.begin(), f.end());
-
-        if (it == formatArraySpan.end()) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
+        // Implementation must select a signed format with four components unless there are none with alpha.
+        int64_t alphaFormat = SelectSwapchainFormat(  //
+            false, imageFormatArray, {VK_FORMAT_R16G16B16A16_SFLOAT});
+        if (alphaFormat != -1) {
+            return alphaFormat;
         }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray, {VK_FORMAT_R16G16B16_SFLOAT});
     }
 
     int64_t VulkanGraphicsPlugin::GetSRGBA8Format() const

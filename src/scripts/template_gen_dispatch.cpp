@@ -174,15 +174,18 @@ static PFN_xrVoidFunction ConformanceLayer_InnerGetInstanceProcAddr(
     }
 //# for cur_cmd in sorted_cmds
 //#     set is_core = "XR_VERSION_" in cur_cmd.ext_name
+//#     set is_core_1_0 = "XR_VERSION_1_0" in cur_cmd.ext_name
 //#     if cur_cmd.name not in skip_hooks and cur_cmd.name != "xrGetInstanceProcAddr"
 
 /*{ protect_begin(cur_cmd) }*/
     if (strcmp(name, /*{cur_cmd.name | quote_string}*/) == 0) {
 //#         if not is_core
         if (handleState->conformanceHooks->enabledExtensions./*{cur_cmd.ext_name | make_ext_variable_name}*/) {
+//#         elif not is_core_1_0
+        if (handleState->conformanceHooks->enabledVersions./*{cur_cmd.ext_name | make_version_variable_name}*/) {
 //#         endif
             return reinterpret_cast<PFN_xrVoidFunction>(ConformanceLayer_/*{cur_cmd.name}*/);
-//#         if not is_core
+//#         if not is_core_1_0
         }
         return nullptr;
 //#         endif

@@ -26,11 +26,12 @@
 #include <chrono>
 
 using namespace Conformance;
-namespace chrono = std::chrono;
 
 namespace Conformance
 {
     using namespace openxr::math_operators;
+
+    using namespace std::chrono_literals;
 
     static constexpr const char* kEyeGazeInteractionUserPath = "/user/eyes_ext";
     static constexpr const char* kEyeGazeInteractionPoseInputPath = "/user/eyes_ext/input/gaze_ext/pose";
@@ -42,6 +43,8 @@ namespace Conformance
     static constexpr XrPosef kPoseIdentity{{0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f}};
     static constexpr XrVector3f kVectorUp{0, 1, 0};
     static constexpr XrVector3f kVectorForward{0, 0, -1};
+
+    static constexpr std::chrono::seconds kGazeLostTimeout = 10s;
 
     static const auto SystemSupportsEyeGazeInteraction =
         MakeSystemPropertiesBoolChecker(XrSystemEyeGazeInteractionPropertiesEXT{XR_TYPE_SYSTEM_EYE_GAZE_INTERACTION_PROPERTIES_EXT},
@@ -458,8 +461,7 @@ namespace Conformance
             instructionsQuad->pose.orientation = Quat::FromAxisAngle(kVectorUp, DegToRad(70));
 
             bool eyeGazeSampleTimeFound = false;
-            auto lastTrackedGaze = chrono::steady_clock::now();
-            const int blinkTimout = 10;
+            Stopwatch sinceTrackedGazeDuration;
             auto update = [&](const XrFrameState& frameState) {
                 std::vector<Cube> renderedCubes;
 
@@ -479,9 +481,9 @@ namespace Conformance
                 // Check if user has requested to complete or fail the test.
                 {
                     // Check if the user closed eyes (or otherwise lost gaze tracking) for ten seconds
-                    const auto lostGazeDuration = chrono::duration_cast<chrono::seconds>(chrono::steady_clock::now() - lastTrackedGaze);
-                    if (lostGazeDuration.count() > blinkTimout) {
-                        FAIL("Test failed by user request");
+                    if (sinceTrackedGazeDuration.IsStarted() &&
+                        std::chrono::duration_cast<std::chrono::seconds>(sinceTrackedGazeDuration.Elapsed()) >= kGazeLostTimeout) {
+                        FAIL("Test failed by user request - gaze lost for longer than timeout");
                     }
 
                     // Check if user has brought the head to the cubes
@@ -527,7 +529,11 @@ namespace Conformance
 
                     // Check if eyes were tracked and reset timeout
                     if ((gazeLocation.locationFlags & XR_SPACE_LOCATION_POSITION_TRACKED_BIT) == XR_SPACE_LOCATION_POSITION_TRACKED_BIT) {
-                        lastTrackedGaze = chrono::steady_clock::now();
+                        sinceTrackedGazeDuration.Stop();
+                    }
+                    // not tracked, make sure timer is running.
+                    else if (!sinceTrackedGazeDuration.IsStarted()) {
+                        sinceTrackedGazeDuration.Restart();
                     }
 
                     // If at least orientation is valid, show a ray representing the gaze

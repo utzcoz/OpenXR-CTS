@@ -1,7 +1,0 @@
----
-- issue.2162.gl
-- issue.2400.gl
-- mr.2597.gl
-- mr.3600.gl
----
-- New test: Automated test that attempts to write from a compute shader to swapchain images in formats that support unordered access, via Vulkan. D3D11/12 check flags to see that they *could* do so but do not yet actually attempt it.

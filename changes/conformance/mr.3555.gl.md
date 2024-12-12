@@ -1,5 +1,0 @@
----
-- issue.2390.gl
----
-- Fix: Correctly load the `glCompressedTexImage2D` function
-- Fix: Upload compressed and mip-mapped textures correctly on OpenGL and OpenGL ES

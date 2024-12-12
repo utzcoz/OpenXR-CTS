@@ -16,12 +16,18 @@
 
 #pragma once
 
-#include <vector>
+#include <nonstd/span.hpp>
+
+#include <algorithm>
+#include <initializer_list>
 #include <stdexcept>
 #include <stdint.h>
+#include <vector>
 
 namespace Conformance
 {
+    using nonstd::span;
+
     /// Wraps a vector to keep track of collections of things referenced by a type-safe handle.
     /// The handle consists of the index in the vector combined with a "generation number" which is
     /// incremented every time the container is cleared.
@@ -92,4 +98,27 @@ namespace Conformance
         GenerationType m_generationNumber{1};
     };
 
+    /// Helper for selecting swapchain formats.
+    ///
+    /// @param throwIfNotFound If true, an exception will be thrown if no suitable format is found.
+    /// @param runtimeSupportedTypes The types exposed by the runtime, in runtime-provided preference order
+    /// @param usableFormats The formats that would be usable.
+    ///
+    /// Returns the first element of @p runtimeSupportedTypes found in @p usableFormats or
+    /// -1 if no intersection and @p throwIfNotFound is false.
+    template <typename FormatType>
+    int64_t SelectSwapchainFormat(bool throwIfNotFound, span<const int64_t> runtimeSupportedTypes,
+                                  const std::initializer_list<FormatType>& usableFormats)
+    {
+        auto it = std::find_first_of(
+            runtimeSupportedTypes.begin(), runtimeSupportedTypes.end(), usableFormats.begin(), usableFormats.end(),
+            [](int64_t supportedFormat, FormatType usableFormat) { return static_cast<int64_t>(usableFormat) == supportedFormat; });
+        if (it == runtimeSupportedTypes.end()) {
+            if (throwIfNotFound) {
+                throw std::runtime_error("No suitable format was returned by the runtime");
+            }
+            return -1;
+        }
+        return *it;
+    };
 }  // namespace Conformance

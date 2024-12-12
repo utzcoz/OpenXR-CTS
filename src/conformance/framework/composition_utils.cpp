@@ -213,10 +213,8 @@ namespace Conformance
         }
 
         if (GetGlobalData().IsUsingGraphicsPlugin()) {
-            m_defaultColorFormat =
-                GetGlobalData().graphicsPlugin->SelectColorSwapchainFormat(swapchainFormats.data(), swapchainFormats.size());
-            m_defaultDepthFormat =
-                GetGlobalData().graphicsPlugin->SelectDepthSwapchainFormat(swapchainFormats.data(), swapchainFormats.size());
+            m_defaultColorFormat = GetGlobalData().graphicsPlugin->SelectColorSwapchainFormat(true, swapchainFormats);
+            m_defaultDepthFormat = GetGlobalData().graphicsPlugin->SelectDepthSwapchainFormat(true, swapchainFormats);
         }
         else {
             m_defaultColorFormat = static_cast<uint64_t>(-1);

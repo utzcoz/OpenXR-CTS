@@ -409,11 +409,11 @@ namespace Conformance
                                      uint32_t* imageCount) const override;
         bool ValidateSwapchainImageState(XrSwapchain swapchain, uint32_t index, int64_t imageFormat) const override;
 
-        int64_t SelectColorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectColorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
-        int64_t SelectDepthSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectDepthSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
-        int64_t SelectMotionVectorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectMotionVectorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
         // Format required by RGBAImage type.
         int64_t GetSRGBA8Format() const override;
@@ -902,67 +902,48 @@ namespace Conformance
         return true;
     }
 
-    int64_t OpenGLGraphicsPlugin::SelectColorSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t OpenGLGraphicsPlugin::SelectColorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
         // List of supported color swapchain formats, note sRGB formats skipped due to CTS bug.
         // The order of this list does not effect the priority of selecting formats, the runtime list defines that.
-        const std::array<GLenum, 6> f{
-            GL_RGB10_A2,
-            GL_RGBA16,
-            GL_RGBA16F,
-            GL_RGBA32F,
-            // The two below should only be used as a fallback, as they are linear color formats without enough bits for color
-            // depth, thus leading to banding.
-            GL_RGBA8,
-            GL_RGBA8_SNORM,
-        };
-
-        span<const int64_t> formatArraySpan{formatArray, count};
-        auto it = std::find_first_of(formatArraySpan.begin(), formatArraySpan.end(), f.begin(), f.end());
-
-        if (it == formatArraySpan.end()) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
-        }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                GL_RGB10_A2,
+                GL_RGBA16,
+                GL_RGBA16F,
+                GL_RGBA32F,
+                // The two below should only be used as a fallback, as they are linear color formats without enough bits for color
+                // depth, thus leading to banding.
+                GL_RGBA8,
+                GL_RGBA8_SNORM,
+            });
     }
 
-    int64_t OpenGLGraphicsPlugin::SelectDepthSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t OpenGLGraphicsPlugin::SelectDepthSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
         // List of supported depth swapchain formats.
-        const std::array<GLenum, 5> f{
-            GL_DEPTH24_STENCIL8, GL_DEPTH32F_STENCIL8, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT16,
-        };
-
-        span<const int64_t> formatArraySpan{formatArray, count};
-        auto it = std::find_first_of(formatArraySpan.begin(), formatArraySpan.end(), f.begin(), f.end());
-
-        if (it == formatArraySpan.end()) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
-        }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                GL_DEPTH24_STENCIL8,
+                GL_DEPTH32F_STENCIL8,
+                GL_DEPTH_COMPONENT24,
+                GL_DEPTH_COMPONENT32F,
+                GL_DEPTH_COMPONENT16,
+            });
     }
 
-    int64_t OpenGLGraphicsPlugin::SelectMotionVectorSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t OpenGLGraphicsPlugin::SelectMotionVectorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
-        // List of swapchain formats suitable for motion vectors.
-        const std::array<GLenum, 2> f{
-            GL_RGBA16F,
-            GL_RGB16F,
-        };
-
-        span<const int64_t> formatArraySpan{formatArray, count};
-        auto it = std::find_first_of(formatArraySpan.begin(), formatArraySpan.end(), f.begin(), f.end());
-
-        if (it == formatArraySpan.end()) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
+        // Implementation must select a signed format with four components unless there are none with alpha.
+        int64_t alphaFormat = SelectSwapchainFormat(  //
+            false, imageFormatArray, {GL_RGBA16F});
+        if (alphaFormat != -1) {
+            return alphaFormat;
         }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray, {GL_RGB16F});
     }
 
     int64_t OpenGLGraphicsPlugin::GetSRGBA8Format() const
