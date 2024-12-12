@@ -1112,7 +1112,7 @@ namespace Conformance
                 createInfo.faceCount = cubemap ? 6 : 1;
                 createInfo.createFlags = 0;  // XR_SWAPCHAIN_CREATE_PROTECTED_CONTENT_BIT or XR_SWAPCHAIN_CREATE_STATIC_IMAGE_BIT
                 createInfo.usageFlags = usageFlags;
-                createInfo.format = graphicsPlugin->SelectColorSwapchainFormat(formatArray.data(), formatArray.size());
+                createInfo.format = graphicsPlugin->SelectColorSwapchainFormat(true, formatArray);
                 createInfo.sampleCount = 1;
                 createInfo.width = (uint32_t)widthHeight->width;
                 createInfo.height = (uint32_t)widthHeight->height;
@@ -1159,7 +1159,7 @@ namespace Conformance
                 createInfo.faceCount = 1;
                 createInfo.createFlags = 0;  // XR_SWAPCHAIN_CREATE_PROTECTED_CONTENT_BIT or XR_SWAPCHAIN_CREATE_STATIC_IMAGE_BIT
                 createInfo.usageFlags = usageFlags;
-                createInfo.format = graphicsPlugin->SelectDepthSwapchainFormat(formatArray.data(), formatArray.size());
+                createInfo.format = graphicsPlugin->SelectDepthSwapchainFormat(true, formatArray);
                 createInfo.sampleCount = 1;
                 createInfo.width = (uint32_t)widthHeight->width;
                 createInfo.height = (uint32_t)widthHeight->height;
@@ -1202,7 +1202,7 @@ namespace Conformance
                 createInfo.faceCount = 1;
                 createInfo.createFlags = 0;  // XR_SWAPCHAIN_CREATE_PROTECTED_CONTENT_BIT or XR_SWAPCHAIN_CREATE_STATIC_IMAGE_BIT
                 createInfo.usageFlags = usageFlags;
-                createInfo.format = graphicsPlugin->SelectMotionVectorSwapchainFormat(formatArray.data(), formatArray.size());
+                createInfo.format = graphicsPlugin->SelectMotionVectorSwapchainFormat(true, formatArray);
                 createInfo.sampleCount = 1;
                 createInfo.width = (uint32_t)widthHeight->width;
                 createInfo.height = (uint32_t)widthHeight->height;

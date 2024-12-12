@@ -39,6 +39,7 @@
 #include <catch2/matchers/catch_matchers_vector.hpp>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <functional>
@@ -264,9 +265,12 @@ namespace Conformance
 
             SECTION("Duplicate subaction paths")
             {
-                XrPath subactionPaths[2] = {StringToPath(instance, "/user/head"), StringToPath(instance, "/user/head")};
+                const std::array<XrPath, 2> subactionPaths = {
+                    StringToPath(instance, "/user/head"),
+                    StringToPath(instance, "/user/head"),
+                };
                 actionCreateInfo.countSubactionPaths = 2;
-                actionCreateInfo.subactionPaths = subactionPaths;
+                actionCreateInfo.subactionPaths = subactionPaths.data();
                 REQUIRE_RESULT(xrCreateAction(actionSet, &actionCreateInfo, &action), XR_ERROR_PATH_UNSUPPORTED);
             }
 
@@ -559,16 +563,16 @@ namespace Conformance
                     CAPTURE(ipMetadata.InteractionProfilePathString);
                     bindings.interactionProfile = StringToPath(instance, ipMetadata.InteractionProfilePathString);
                     bindings.countSuggestedBindings = 1;
-                    for (const auto& inputSourcePathData : ipMetadata.InputSourcePaths) {
-                        CAPTURE(inputSourcePathData.Path);
-                        CAPTURE(inputSourcePathData.Type);
+                    for (const auto& bindingPathData : ipMetadata.BindingPaths) {
+                        CAPTURE(bindingPathData.Path);
+                        CAPTURE(bindingPathData.Type);
 
-                        if (!SatisfiedByDefault(inputSourcePathData.Availability)) {
+                        if (!SatisfiedByDefault(bindingPathData.Availability)) {
                             continue;
                         }
 
                         XrAction selectedAction;
-                        switch (inputSourcePathData.Type) {
+                        switch (bindingPathData.Type) {
                         case XR_ACTION_TYPE_BOOLEAN_INPUT:
                             selectedAction = boolAction;
                             break;
@@ -585,7 +589,7 @@ namespace Conformance
                             selectedAction = hapticAction;
                         }
 
-                        XrActionSuggestedBinding suggestedBindings{selectedAction, StringToPath(instance, inputSourcePathData.Path)};
+                        XrActionSuggestedBinding suggestedBindings{selectedAction, StringToPath(instance, bindingPathData.Path)};
                         bindings.suggestedBindings = &suggestedBindings;
                         REQUIRE_RESULT(xrSuggestInteractionProfileBindings(instance, &bindings), XR_SUCCESS);
                     }
@@ -683,7 +687,7 @@ namespace Conformance
         strcpy(actionCreateInfo.actionName, "test_haptic_action_name");
         REQUIRE_RESULT(xrCreateAction(actionSet, &actionCreateInfo, &hapticAction), XR_SUCCESS);
 
-        auto setupBinding = [&](const InputSourcePathAvailData& pathData) {
+        auto setupBinding = [&](const BindingPathData& pathData) {
             CAPTURE(pathData.Path);
             CAPTURE(pathData.Type);
 
@@ -725,8 +729,8 @@ namespace Conformance
             if (SatisfiedByDefault(ipMetadata.Availability)) {
                 DYNAMIC_SECTION(ipMetadata.InteractionProfileShortname << " Expect Available")
                 {
-                    for (const auto& inputSourcePathData : ipMetadata.InputSourcePaths) {
-                        setupBinding(inputSourcePathData);
+                    for (const auto& bindingPathData : ipMetadata.BindingPaths) {
+                        setupBinding(bindingPathData);
                     }
                 }
             }
@@ -734,8 +738,8 @@ namespace Conformance
                 // Not available by default
                 DYNAMIC_SECTION(ipMetadata.InteractionProfileShortname << " Expect Unavailable")
                 {
-                    for (const auto& inputSourcePathData : ipMetadata.InputSourcePaths) {
-                        setupBinding(inputSourcePathData);
+                    for (const auto& bindingPathData : ipMetadata.BindingPaths) {
+                        setupBinding(bindingPathData);
                     }
                 }
             }
@@ -780,7 +784,7 @@ namespace Conformance
         std::shared_ptr<IInputTestDevice> inputDevice =
             CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session,
                              StringToPath(instance, GetSimpleInteractionProfile().InteractionProfilePathString), path,
-                             GetSimpleInteractionProfile().InputSourcePaths);
+                             GetSimpleInteractionProfile().BindingPaths);
 
         compositionHelper.GetInteractionManager().AddActionSet(actionSet);
 
@@ -1122,17 +1126,17 @@ namespace Conformance
                 XrPath interactionProfilePath = StringToPath(instance, interactionProfileName);
 
                 bool bindingSuggested = false;
-                for (auto& bindings : interactionProfile.InputSourcePaths) {
+                for (auto& bindingPathData : interactionProfile.BindingPaths) {
                     // We use the same pattern as the rest of the action conformance suite
                     // and only bind the boolean actions. Note that we bind "boolAction"
                     // to *every* boolean input, not just the first one.
-                    if (bindings.Type != XR_ACTION_TYPE_BOOLEAN_INPUT) {
+                    if (bindingPathData.Type != XR_ACTION_TYPE_BOOLEAN_INPUT) {
                         continue;
                     }
-                    if (!SatisfiedByDefault(bindings.Availability)) {
+                    if (!SatisfiedByDefault(bindingPathData.Availability)) {
                         continue;
                     }
-                    XrActionSuggestedBinding binding = {boolAction, StringToPath(instance, bindings.Path)};
+                    XrActionSuggestedBinding binding = {boolAction, StringToPath(instance, bindingPathData.Path)};
                     interactionManager.AddActionBindings(interactionProfilePath, {binding});
                     bindingSuggested = true;
                 }
@@ -1160,7 +1164,7 @@ namespace Conformance
             std::shared_ptr<IInputTestDevice> inputDevice =
                 CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session,
                                  StringToPath(instance, GetSimpleInteractionProfile().InteractionProfilePathString), userHandLeftXrPath,
-                                 GetSimpleInteractionProfile().InputSourcePaths);
+                                 GetSimpleInteractionProfile().BindingPaths);
 
             // This function calls xrSuggestInteractionProfileBindings() before attaching the actionsets
             interactionManager.AttachActionSets(&interactionProfileOrder);
@@ -1237,13 +1241,13 @@ namespace Conformance
         std::shared_ptr<IInputTestDevice> leftHandInputDevice =
             CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session,
                              StringToPath(instance, GetSimpleInteractionProfile().InteractionProfilePathString), leftHandPath,
-                             GetSimpleInteractionProfile().InputSourcePaths);
+                             GetSimpleInteractionProfile().BindingPaths);
 
         XrPath rightHandPath{StringToPath(instance, "/user/hand/right")};
         std::shared_ptr<IInputTestDevice> rightHandInputDevice =
             CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session,
                              StringToPath(instance, GetSimpleInteractionProfile().InteractionProfilePathString), rightHandPath,
-                             GetSimpleInteractionProfile().InputSourcePaths);
+                             GetSimpleInteractionProfile().BindingPaths);
 
         XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
         XrActiveActionSet activeActionSet{actionSet};
@@ -1361,13 +1365,13 @@ namespace Conformance
         XrPath leftHandPath{StringToPath(instance, "/user/hand/left")};
         std::shared_ptr<IInputTestDevice> leftHandInputDevice =
             CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session,
-                             simpleControllerInteractionProfile, leftHandPath, GetSimpleInteractionProfile().InputSourcePaths);
+                             simpleControllerInteractionProfile, leftHandPath, GetSimpleInteractionProfile().BindingPaths);
 
         std::string rightHandPathString = "/user/hand/right";
         XrPath rightHandPath{StringToPath(instance, "/user/hand/right")};
         std::shared_ptr<IInputTestDevice> rightHandInputDevice =
             CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session,
-                             simpleControllerInteractionProfile, rightHandPath, GetSimpleInteractionProfile().InputSourcePaths);
+                             simpleControllerInteractionProfile, rightHandPath, GetSimpleInteractionProfile().BindingPaths);
 
         bool leftUnderTest = GetGlobalData().leftHandUnderTest;
         std::string defaultDevicePathStr = leftUnderTest ? leftHandPathString : rightHandPathString;
@@ -2065,7 +2069,7 @@ namespace Conformance
     {
         struct ActionInfo
         {
-            InputSourcePathAvailData Data;
+            BindingPathData Data;
             XrAction Action{XR_NULL_HANDLE};
             XrAction XAction{XR_NULL_HANDLE};  // Set if type is vector2f
             XrAction YAction{XR_NULL_HANDLE};  // Set if type is vector2f
@@ -2077,7 +2081,7 @@ namespace Conformance
         constexpr float cEpsilon = 0.1f;
         constexpr float cLargeEpsilon = 0.15f;
 
-        auto TestInteractionProfile = [&](const InteractionProfileAvailMetadata& ipMetadata, const std::string& topLevelPathString) {
+        auto TestInteractionProfile = [&](const InteractionProfileAvailMetadata& ipMetadata, const std::string& topLevelUserPathString) {
             CompositionHelper compositionHelper("Input device state query");
             XrInstance instance = compositionHelper.GetInstance();
             XrSession session = compositionHelper.GetSession();
@@ -2086,16 +2090,16 @@ namespace Conformance
 
             actionLayerManager.WaitForSessionFocusWithMessage();
 
-            XrPath interactionProfile = StringToPath(instance, ipMetadata.InteractionProfilePathString);
-            XrPath inputDevicePath{StringToPath(instance, topLevelPathString.data())};
+            XrPath interactionProfilePath = StringToPath(instance, ipMetadata.InteractionProfilePathString);
+            XrPath topLevelUserPath{StringToPath(instance, topLevelUserPathString.data())};
             std::shared_ptr<IInputTestDevice> inputDevice =
-                CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session, interactionProfile,
-                                 inputDevicePath, ipMetadata.InputSourcePaths);
+                CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session, interactionProfilePath,
+                                 topLevelUserPath, ipMetadata.BindingPaths);
 
             XrActionSet actionSet{XR_NULL_HANDLE};
 
-            std::string actionSetName = "state_query_test_action_set_" + std::to_string(inputDevicePath);
-            std::string localizedActionSetName = "State Query Test Action Set " + std::to_string(inputDevicePath);
+            std::string actionSetName = "state_query_test_action_set_" + std::to_string(topLevelUserPath);
+            std::string localizedActionSetName = "State Query Test Action Set " + std::to_string(topLevelUserPath);
 
             XrActionSetCreateInfo actionSetCreateInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
             strcpy(actionSetCreateInfo.localizedActionSetName, localizedActionSetName.c_str());
@@ -2109,54 +2113,54 @@ namespace Conformance
                                                             "state query test action " + std::to_string(uniqueActionNameCounter)};
             };
 
-            auto shouldExercisePath = [&ipMetadata](const InputSourcePathAvailData& inputSourceData) -> bool {
-                if (inputSourceData.systemOnly) {
+            auto shouldExercisePath = [&ipMetadata](const BindingPathData& bindingPathData) -> bool {
+                if (bindingPathData.systemOnly) {
                     return false;
                 }
                 if (strcmp(ipMetadata.InteractionProfileShortname, "oculus/touch_controller") == 0 &&
-                    ends_with(inputSourceData.Path, "/input/thumbrest/touch")) {
+                    ends_with(bindingPathData.Path, "/input/thumbrest/touch")) {
                     // Rift S and Quest 1 controllers lack thumbrests.
                     return false;
                 }
                 if (strcmp(ipMetadata.InteractionProfileShortname, "ext/hand_interaction_ext") == 0 &&
-                    ends_with(inputSourceData.Path, "/input/aim_activate_ext/value")) {
+                    ends_with(bindingPathData.Path, "/input/aim_activate_ext/value")) {
                     // aim_activate_ext/value does not require that the values coming back
                     // actually be floats, they can also be boolean so this is hard for
                     // us to exercise.
                     return false;
                 }
-                if (!SatisfiedByDefault(inputSourceData.Availability)) {
+                if (!SatisfiedByDefault(bindingPathData.Availability)) {
                     return false;
                 }
                 return true;
             };
 
-            auto InputSourceDataForTopLevelPath = [&]() {
-                std::vector<InputSourcePathAvailData> ret;
-                for (const InputSourcePathAvailData& inputSourceData : ipMetadata.InputSourcePaths) {
-                    if (!starts_with(inputSourceData.Path, topLevelPathString)) {
+            auto BindingPathDataForTopLevelUserPath = [&]() {
+                std::vector<BindingPathData> ret;
+                for (const BindingPathData& bindingPathData : ipMetadata.BindingPaths) {
+                    if (!starts_with(bindingPathData.Path, topLevelUserPathString)) {
                         continue;
                     }
-                    ret.push_back(inputSourceData);
+                    ret.push_back(bindingPathData);
                 }
                 return ret;
             };
-            auto ActionsForTopLevelPath = [&](XrActionType type) -> std::vector<ActionInfo> {
-                auto inputSourceDataList = InputSourceDataForTopLevelPath();
+            auto ActionsForTopLevelUserPath = [&](XrActionType type) -> std::vector<ActionInfo> {
+                auto bindingPathDataList = BindingPathDataForTopLevelUserPath();
                 std::vector<ActionInfo> actions;
-                for (const InputSourcePathAvailData& inputSourceData : inputSourceDataList) {
-                    if (type != inputSourceData.Type) {
+                for (const BindingPathData& bindingPathData : bindingPathDataList) {
+                    if (type != bindingPathData.Type) {
                         continue;
                     }
-                    if (!shouldExercisePath(inputSourceData)) {
+                    if (!shouldExercisePath(bindingPathData)) {
                         continue;
                     }
 
                     // Skip /x or /y components since we handle those with the parent Vector2f.
-                    const std::string pathString = inputSourceData.Path;
+                    const std::string pathString = bindingPathData.Path;
                     std::cmatch bindingPathRegexMatch;
                     REQUIRE_MSG(std::regex_match(pathString.data(), bindingPathRegexMatch, cInteractionSourcePathRegex),
-                                "input source path does not match require format");
+                                "binding path does not match required format");
                     if (bindingPathRegexMatch[7].matched) {
                         if (bindingPathRegexMatch[7] == "x" || bindingPathRegexMatch[7] == "y") {
 #if !defined(NDEBUG)
@@ -2171,18 +2175,18 @@ namespace Conformance
                     XrAction yAction{XR_NULL_HANDLE};
 
                     XrActionCreateInfo actionCreateInfo{XR_TYPE_ACTION_CREATE_INFO};
-                    actionCreateInfo.actionType = inputSourceData.Type;
+                    actionCreateInfo.actionType = bindingPathData.Type;
                     auto actionNames = GetActionNames();
                     strcpy(actionCreateInfo.localizedActionName, std::get<1>(actionNames).c_str());
                     strcpy(actionCreateInfo.actionName, std::get<0>(actionNames).c_str());
                     REQUIRE_RESULT(xrCreateAction(actionSet, &actionCreateInfo, &action), XR_SUCCESS);
 
-                    XrPath bindingPath = StringToPath(instance, inputSourceData.Path);
-                    compositionHelper.GetInteractionManager().AddActionBindings(interactionProfile, {{action, bindingPath}});
+                    XrPath bindingPath = StringToPath(instance, bindingPathData.Path);
+                    compositionHelper.GetInteractionManager().AddActionBindings(interactionProfilePath, {{action, bindingPath}});
 
                     ActionInfo info{};
 
-                    switch (inputSourceData.Type) {
+                    switch (bindingPathData.Type) {
                     case XR_ACTION_TYPE_BOOLEAN_INPUT:
                         // Need to see 0 1
                         info.UnseenValues = {false, true};
@@ -2221,18 +2225,18 @@ namespace Conformance
                         strcpy(actionCreateInfo.actionName, std::get<0>(actionNames).c_str());
                         REQUIRE_RESULT(xrCreateAction(actionSet, &actionCreateInfo, &xAction), XR_SUCCESS);
 
-                        std::string xSubBindingPath = std::string(inputSourceData.Path) + "/x";
+                        std::string xSubBindingPath = std::string(bindingPathData.Path) + "/x";
                         bindingPath = StringToPath(instance, xSubBindingPath);
-                        compositionHelper.GetInteractionManager().AddActionBindings(interactionProfile, {{xAction, bindingPath}});
+                        compositionHelper.GetInteractionManager().AddActionBindings(interactionProfilePath, {{xAction, bindingPath}});
 
                         actionNames = GetActionNames();
                         strcpy(actionCreateInfo.localizedActionName, std::get<1>(actionNames).c_str());
                         strcpy(actionCreateInfo.actionName, std::get<0>(actionNames).c_str());
                         REQUIRE_RESULT(xrCreateAction(actionSet, &actionCreateInfo, &yAction), XR_SUCCESS);
 
-                        std::string ySubBindingPath = std::string(inputSourceData.Path) + "/y";
+                        std::string ySubBindingPath = std::string(bindingPathData.Path) + "/y";
                         bindingPath = StringToPath(instance, ySubBindingPath);
-                        compositionHelper.GetInteractionManager().AddActionBindings(interactionProfile, {{yAction, bindingPath}});
+                        compositionHelper.GetInteractionManager().AddActionBindings(interactionProfilePath, {{yAction, bindingPath}});
                         break;
                     }
                     case XR_ACTION_TYPE_POSE_INPUT:
@@ -2240,20 +2244,20 @@ namespace Conformance
                         break;
                     case XR_ACTION_TYPE_MAX_ENUM:
                     default:
-                        WARN("Unexpected action type " << inputSourceData.Type);
+                        WARN("Unexpected action type " << bindingPathData.Type);
                         break;
                     }
 
 #if !defined(NDEBUG)
                     // Debug UnseenValues
-                    std::string unseen = inputSourceData.Path;
+                    std::string unseen = bindingPathData.Path;
                     for (auto key : info.UnseenValues) {
                         unseen += " " + std::to_string(key);
                     }
                     ReportF("Keys for %s", unseen.c_str());
 #endif
 
-                    info.Data = inputSourceData;
+                    info.Data = bindingPathData;
                     info.Action = action;
                     info.XAction = xAction;
                     info.YAction = yAction;
@@ -2264,17 +2268,17 @@ namespace Conformance
                 return actions;
             };
             auto ActionsForTopLevelPathCoerced = [&](XrActionType type, XrActionType coercionType) -> std::vector<ActionInfo> {
-                auto inputSourceDataList = InputSourceDataForTopLevelPath();
+                auto bindingPathDataList = BindingPathDataForTopLevelUserPath();
 
                 auto HasSubpathOfType = [&](std::string parentPath, XrActionType type) {
-                    for (const InputSourcePathAvailData& inputSourceData : inputSourceDataList) {
-                        if (inputSourceData.Type != type) {
+                    for (const BindingPathData& bindingPathData : bindingPathDataList) {
+                        if (bindingPathData.Type != type) {
                             continue;
                         }
-                        if (!shouldExercisePath(inputSourceData)) {
+                        if (!shouldExercisePath(bindingPathData)) {
                             continue;
                         }
-                        auto prefixedByParentPath = starts_with(inputSourceData.Path, parentPath);
+                        auto prefixedByParentPath = starts_with(bindingPathData.Path, parentPath);
                         if (prefixedByParentPath) {
                             return true;
                         }
@@ -2283,31 +2287,31 @@ namespace Conformance
                 };
 
                 std::vector<ActionInfo> actions;
-                for (const InputSourcePathAvailData& inputSourceData : inputSourceDataList) {
-                    if (type != inputSourceData.Type) {
+                for (const BindingPathData& bindingPathData : bindingPathDataList) {
+                    if (type != bindingPathData.Type) {
                         continue;
                     }
-                    if (!shouldExercisePath(inputSourceData)) {
+                    if (!shouldExercisePath(bindingPathData)) {
                         continue;
                     }
 
                     // If we are using the parent path, the runtime should map it if there is a subpath
                     // e.g. .../thumbstick may get bound to .../thumbstick/click which is valid
-                    const std::string pathString = inputSourceData.Path;
+                    const std::string pathString = bindingPathData.Path;
                     std::cmatch bindingPathRegexMatch;
                     REQUIRE_MSG(std::regex_match(pathString.data(), bindingPathRegexMatch, cInteractionSourcePathRegex),
-                                "input source path does not match require format");
+                                "binding path does not match required format");
                     if (bindingPathRegexMatch[5].matched) {
                         if (coercionType == XR_ACTION_TYPE_BOOLEAN_INPUT &&
-                            HasSubpathOfType(inputSourceData.Path, XR_ACTION_TYPE_BOOLEAN_INPUT)) {
+                            HasSubpathOfType(bindingPathData.Path, XR_ACTION_TYPE_BOOLEAN_INPUT)) {
                             continue;
                         }
                         if (coercionType == XR_ACTION_TYPE_FLOAT_INPUT &&
-                            HasSubpathOfType(inputSourceData.Path, XR_ACTION_TYPE_FLOAT_INPUT)) {
+                            HasSubpathOfType(bindingPathData.Path, XR_ACTION_TYPE_FLOAT_INPUT)) {
                             continue;
                         }
                         if (coercionType == XR_ACTION_TYPE_POSE_INPUT &&
-                            HasSubpathOfType(inputSourceData.Path, XR_ACTION_TYPE_POSE_INPUT)) {
+                            HasSubpathOfType(bindingPathData.Path, XR_ACTION_TYPE_POSE_INPUT)) {
                             continue;
                         }
                     }
@@ -2320,11 +2324,11 @@ namespace Conformance
                     strcpy(actionCreateInfo.actionName, std::get<0>(actionNames).c_str());
                     REQUIRE_RESULT(xrCreateAction(actionSet, &actionCreateInfo, &action), XR_SUCCESS);
 
-                    XrPath bindingPath = StringToPath(instance, inputSourceData.Path);
-                    compositionHelper.GetInteractionManager().AddActionBindings(interactionProfile, {{action, bindingPath}});
+                    XrPath bindingPath = StringToPath(instance, bindingPathData.Path);
+                    compositionHelper.GetInteractionManager().AddActionBindings(interactionProfilePath, {{action, bindingPath}});
 
                     ActionInfo info{};
-                    info.Data = inputSourceData;
+                    info.Data = bindingPathData;
                     info.Data.Type = coercionType;
                     info.Action = action;
                     actions.push_back(info);
@@ -2333,7 +2337,7 @@ namespace Conformance
                 return actions;
             };
             auto ActionOfTypeForTopLevelPath = [&](XrActionType type) -> ActionInfo {
-                auto inputSourceDataList = InputSourceDataForTopLevelPath();
+                auto bindingPathDataList = BindingPathDataForTopLevelUserPath();
 
                 XrAction action{XR_NULL_HANDLE};
                 XrActionCreateInfo actionCreateInfo{XR_TYPE_ACTION_CREATE_INFO};
@@ -2343,16 +2347,16 @@ namespace Conformance
                 strcpy(actionCreateInfo.actionName, std::get<0>(actionNames).c_str());
                 REQUIRE_RESULT(xrCreateAction(actionSet, &actionCreateInfo, &action), XR_SUCCESS);
 
-                for (const InputSourcePathAvailData& inputSourceData : inputSourceDataList) {
-                    if (type != inputSourceData.Type) {
+                for (const BindingPathData& bindingPathData : bindingPathDataList) {
+                    if (type != bindingPathData.Type) {
                         continue;
                     }
-                    if (!shouldExercisePath(inputSourceData)) {
+                    if (!shouldExercisePath(bindingPathData)) {
                         continue;
                     }
 
-                    XrPath bindingPath = StringToPath(instance, inputSourceData.Path);
-                    compositionHelper.GetInteractionManager().AddActionBindings(interactionProfile, {{action, bindingPath}});
+                    XrPath bindingPath = StringToPath(instance, bindingPathData.Path);
+                    compositionHelper.GetInteractionManager().AddActionBindings(interactionProfilePath, {{action, bindingPath}});
                 }
 
                 ActionInfo info{};
@@ -2368,11 +2372,11 @@ namespace Conformance
             };
 
             // Actions for each of source of a type
-            auto booleanActions = ActionsForTopLevelPath(XR_ACTION_TYPE_BOOLEAN_INPUT);
-            auto floatActions = ActionsForTopLevelPath(XR_ACTION_TYPE_FLOAT_INPUT);
-            auto vectorActions = ActionsForTopLevelPath(XR_ACTION_TYPE_VECTOR2F_INPUT);
-            auto poseActions = ActionsForTopLevelPath(XR_ACTION_TYPE_POSE_INPUT);
-            auto hapticActions = ActionsForTopLevelPath(XR_ACTION_TYPE_VIBRATION_OUTPUT);
+            auto booleanActions = ActionsForTopLevelUserPath(XR_ACTION_TYPE_BOOLEAN_INPUT);
+            auto floatActions = ActionsForTopLevelUserPath(XR_ACTION_TYPE_FLOAT_INPUT);
+            auto vectorActions = ActionsForTopLevelUserPath(XR_ACTION_TYPE_VECTOR2F_INPUT);
+            auto poseActions = ActionsForTopLevelUserPath(XR_ACTION_TYPE_POSE_INPUT);
+            auto hapticActions = ActionsForTopLevelUserPath(XR_ACTION_TYPE_VIBRATION_OUTPUT);
 
             // Single actions bound to all of a type
             auto allBooleanAction = ActionOfTypeForTopLevelPath(XR_ACTION_TYPE_BOOLEAN_INPUT);
@@ -2406,8 +2410,8 @@ namespace Conformance
             actionLayerManager.SyncActionsUntilFocusWithMessage(syncInfo);
 
             XrInteractionProfileState interactionProfileState{XR_TYPE_INTERACTION_PROFILE_STATE};
-            REQUIRE_RESULT(xrGetCurrentInteractionProfile(session, inputDevicePath, &interactionProfileState), XR_SUCCESS);
-            REQUIRE(interactionProfile == interactionProfileState.interactionProfile);
+            REQUIRE_RESULT(xrGetCurrentInteractionProfile(session, topLevelUserPath, &interactionProfileState), XR_SUCCESS);
+            REQUIRE(interactionProfilePath == interactionProfileState.interactionProfile);
 
             XrActionStateBoolean booleanState{XR_TYPE_ACTION_STATE_BOOLEAN};
             PoisonStructContents(booleanState);
@@ -2421,7 +2425,7 @@ namespace Conformance
             {
                 XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
 
-                actionLayerManager.DisplayMessage("Use all controller inputs on\n" + topLevelPathString);
+                actionLayerManager.DisplayMessage("Use all controller inputs on\n" + topLevelUserPathString);
 
                 if (!GetGlobalData().IsUsingConformanceAutomation()) {
                     actionLayerManager.Sleep_For(1s);
@@ -2718,7 +2722,7 @@ namespace Conformance
                             waitForCombinedPrefix = ",";
                         }
                         std::string prompt = "Used " + std::to_string(seenActions.size()) + "/" + std::to_string(actionCount) +
-                                             " inputs on:\n" + topLevelPathString + waitForCombined + nextActionPrompt;
+                                             " inputs on:\n" + topLevelUserPathString + waitForCombined + nextActionPrompt;
                         actionLayerManager.DisplayMessage(prompt);
 
                         return false;
@@ -2796,7 +2800,7 @@ namespace Conformance
                             selectedBooleanActions = booleanActions;
                         }
 
-                        XrPath inputSourcePath = StringToPath(instance, selectedBooleanActions[0].Data.Path);
+                        XrPath bindingPath = StringToPath(instance, selectedBooleanActions[0].Data.Path);
 
                         XrAction currentBooleanAction{XR_NULL_HANDLE};
                         auto GetBooleanButtonState = [&]() -> bool {
@@ -2838,9 +2842,9 @@ namespace Conformance
 
                         {
                             // For automation only
-                            inputDevice->SetButtonStateBool(inputSourcePath, false, true);
+                            inputDevice->SetButtonStateBool(bindingPath, false, true);
                             actionLayerManager.SyncActionsUntilFocusWithMessage(syncInfo);
-                            inputDevice->SetButtonStateBool(inputSourcePath, true, true);
+                            inputDevice->SetButtonStateBool(bindingPath, true, true);
                         }
                         currentBooleanAction = XR_NULL_HANDLE;
                         WaitUntilPredicateWithTimeout(
@@ -2854,7 +2858,7 @@ namespace Conformance
 
                         {
                             // For automation only
-                            inputDevice->SetButtonStateBool(inputSourcePath, false, true);
+                            inputDevice->SetButtonStateBool(bindingPath, false, true);
                         }
 
                         REQUIRE_RESULT(xrStopHapticFeedback(session, &hapticActionInfo), XR_SUCCESS);
@@ -2877,9 +2881,9 @@ namespace Conformance
                             XR_SUCCESS);
 
                         {
-                            inputDevice->SetButtonStateBool(inputSourcePath, false, true);
+                            inputDevice->SetButtonStateBool(bindingPath, false, true);
                             actionLayerManager.SyncActionsUntilFocusWithMessage(syncInfo);
-                            inputDevice->SetButtonStateBool(inputSourcePath, true, true);
+                            inputDevice->SetButtonStateBool(bindingPath, true, true);
                         }
                         currentBooleanAction = XR_NULL_HANDLE;
                         WaitUntilPredicateWithTimeout(
@@ -2893,7 +2897,7 @@ namespace Conformance
 
                         {
                             // For automation only
-                            inputDevice->SetButtonStateBool(inputSourcePath, false, true);
+                            inputDevice->SetButtonStateBool(bindingPath, false, true);
                         }
                     }
 
@@ -2909,25 +2913,25 @@ namespace Conformance
                 INFO("Boolean->Float");
                 for (const auto& booleanToFloatActionData : floatActionsCoercedToBoolean) {
                     CAPTURE(booleanToFloatActionData.Data.Path);
-                    XrPath inputSourcePath = StringToPath(instance, booleanToFloatActionData.Data.Path);
+                    XrPath bindingPath = StringToPath(instance, booleanToFloatActionData.Data.Path);
 
                     XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
                     getInfo.action = booleanToFloatActionData.Action;
 
-                    inputDevice->SetButtonStateFloat(inputSourcePath, 0.0f, cEpsilon, false, actionSet);
+                    inputDevice->SetButtonStateFloat(bindingPath, 0.0f, cEpsilon, false, actionSet);
 
                     REQUIRE_RESULT(xrGetActionStateBoolean(session, &getInfo, &booleanState), XR_SUCCESS);
                     REQUIRE(booleanState.isActive);
                     REQUIRE_FALSE(booleanState.currentState);
 
-                    inputDevice->SetButtonStateFloat(inputSourcePath, 1.0f, cEpsilon, false, actionSet);
+                    inputDevice->SetButtonStateFloat(bindingPath, 1.0f, cEpsilon, false, actionSet);
 
                     REQUIRE_RESULT(xrGetActionStateBoolean(session, &getInfo, &booleanState), XR_SUCCESS);
                     REQUIRE(booleanState.isActive);
                     REQUIRE(booleanState.currentState);
                     REQUIRE(booleanState.lastChangeTime > 0);
 
-                    inputDevice->SetButtonStateFloat(inputSourcePath, 0.0f, cEpsilon, false, actionSet);
+                    inputDevice->SetButtonStateFloat(bindingPath, 0.0f, cEpsilon, false, actionSet);
 
                     REQUIRE_RESULT(xrGetActionStateBoolean(session, &getInfo, &booleanState), XR_SUCCESS);
                     REQUIRE(booleanState.isActive);
@@ -2938,25 +2942,25 @@ namespace Conformance
                 INFO("Float->Boolean");
                 for (const auto& floatToBooleanActionData : booleanActionsCoercedToFloat) {
                     CAPTURE(floatToBooleanActionData.Data.Path);
-                    XrPath inputSourcePath = StringToPath(instance, floatToBooleanActionData.Data.Path);
+                    XrPath bindingPath = StringToPath(instance, floatToBooleanActionData.Data.Path);
 
                     XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
                     getInfo.action = floatToBooleanActionData.Action;
 
-                    inputDevice->SetButtonStateBool(inputSourcePath, false, false, actionSet);
+                    inputDevice->SetButtonStateBool(bindingPath, false, false, actionSet);
 
                     REQUIRE_RESULT(xrGetActionStateFloat(session, &getInfo, &floatState), XR_SUCCESS);
                     REQUIRE(floatState.isActive);
                     REQUIRE(floatState.currentState == Catch::Approx(0.0f).margin(cLargeEpsilon));
 
-                    inputDevice->SetButtonStateBool(inputSourcePath, true, false, actionSet);
+                    inputDevice->SetButtonStateBool(bindingPath, true, false, actionSet);
 
                     REQUIRE_RESULT(xrGetActionStateFloat(session, &getInfo, &floatState), XR_SUCCESS);
                     REQUIRE(floatState.isActive);
                     REQUIRE(floatState.currentState == Catch::Approx(1.0f).margin(cLargeEpsilon));
                     REQUIRE(floatState.lastChangeTime > 0);
 
-                    inputDevice->SetButtonStateBool(inputSourcePath, false, false, actionSet);
+                    inputDevice->SetButtonStateBool(bindingPath, false, false, actionSet);
 
                     REQUIRE_RESULT(xrGetActionStateFloat(session, &getInfo, &floatState), XR_SUCCESS);
                     REQUIRE(floatState.isActive);
@@ -3345,7 +3349,7 @@ namespace Conformance
 
         std::shared_ptr<IInputTestDevice> handInputDevice = CreateTestDevice(
             &actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session, simpleControllerInteractionProfile,
-            StringToPath(instance, useLeftHand ? "/user/hand/left" : "/user/hand/right"), GetSimpleInteractionProfile().InputSourcePaths);
+            StringToPath(instance, useLeftHand ? "/user/hand/left" : "/user/hand/right"), GetSimpleInteractionProfile().BindingPaths);
 
         compositionHelper.GetInteractionManager().AddActionSet(actionSet);
         compositionHelper.GetInteractionManager().AddActionBindings(
@@ -3426,11 +3430,11 @@ namespace Conformance
 
         std::shared_ptr<IInputTestDevice> leftHandInputDevice =
             CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session,
-                             simpleControllerInteractionProfile, leftHandPath, GetSimpleInteractionProfile().InputSourcePaths);
+                             simpleControllerInteractionProfile, leftHandPath, GetSimpleInteractionProfile().BindingPaths);
 
         std::shared_ptr<IInputTestDevice> rightHandInputDevice =
             CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session,
-                             simpleControllerInteractionProfile, rightHandPath, GetSimpleInteractionProfile().InputSourcePaths);
+                             simpleControllerInteractionProfile, rightHandPath, GetSimpleInteractionProfile().BindingPaths);
 
         compositionHelper.GetInteractionManager().AddActionSet(actionSet);
         compositionHelper.GetInteractionManager().AddActionBindings(
@@ -3894,7 +3898,7 @@ namespace Conformance
         std::shared_ptr<IInputTestDevice> inputDevice =
             CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session,
                              StringToPath(instance, GetSimpleInteractionProfile().InteractionProfilePathString), path,
-                             GetSimpleInteractionProfile().InputSourcePaths);
+                             GetSimpleInteractionProfile().BindingPaths);
 
         compositionHelper.GetInteractionManager().AddActionSet(actionSet);
         compositionHelper.GetInteractionManager().AddActionBindings(

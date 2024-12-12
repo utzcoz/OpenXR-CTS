@@ -20,6 +20,7 @@
 #include "utilities/throw_helpers.h"
 #include "utilities/types_and_constants.h"
 #include "utilities/utils.h"
+#include "utilities/xr_math_operators.h"
 
 #include <catch2/catch_message.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -31,7 +32,6 @@
 #include <cstddef>
 #include <cstring>
 #include <initializer_list>
-#include <iostream>
 #include <map>
 #include <memory>
 #include <stdint.h>
@@ -138,22 +138,26 @@ namespace Conformance
 
         CompositionHelper compositionHelper("XR_MSFT_controller_model", {"XR_MSFT_controller_model"});
         XrInstance instance = compositionHelper.GetInstance();
+        XrSession session = compositionHelper.GetSession();
 
         ExtensionDataForXR_MSFT_controller_model ext(instance);
 
         ActionLayerManager actionLayerManager(compositionHelper);
         XrPath simpleKHR = StringToPath(instance, "/interaction_profiles/microsoft/motion_controller");
         XrPath leftHandPath{StringToPath(instance, "/user/hand/left")};
-        std::shared_ptr<IInputTestDevice> leftHandInputDevice = CreateTestDevice(
-            &actionLayerManager, &compositionHelper.GetInteractionManager(), instance, compositionHelper.GetSession(), simpleKHR,
-            leftHandPath, GetInteractionProfile(InteractionProfileIndex::Profile_microsoft_motion_controller).InputSourcePaths);
+        std::shared_ptr<IInputTestDevice> leftHandInputDevice =
+            CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session, simpleKHR, leftHandPath,
+                             GetInteractionProfile(InteractionProfileIndex::Profile_microsoft_motion_controller).BindingPaths);
 
         XrPath rightHandPath{StringToPath(instance, "/user/hand/right")};
-        std::shared_ptr<IInputTestDevice> rightHandInputDevice = CreateTestDevice(
-            &actionLayerManager, &compositionHelper.GetInteractionManager(), instance, compositionHelper.GetSession(), simpleKHR,
-            rightHandPath, GetInteractionProfile(InteractionProfileIndex::Profile_microsoft_motion_controller).InputSourcePaths);
+        std::shared_ptr<IInputTestDevice> rightHandInputDevice =
+            CreateTestDevice(&actionLayerManager, &compositionHelper.GetInteractionManager(), instance, session, simpleKHR, rightHandPath,
+                             GetInteractionProfile(InteractionProfileIndex::Profile_microsoft_motion_controller).BindingPaths);
 
-        const std::vector<XrPath> subactionPaths{leftHandPath, rightHandPath};
+        const std::array<XrPath, 2> subactionPaths{
+            leftHandPath,
+            rightHandPath,
+        };
 
         XrActionSet actionSet;
         XrAction gripPoseAction;
@@ -169,8 +173,6 @@ namespace Conformance
             actionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
             strcpy(actionInfo.actionName, "grip_pose");
             strcpy(actionInfo.localizedActionName, "Grip pose");
-            actionInfo.subactionPaths = subactionPaths.data();
-            actionInfo.countSubactionPaths = (uint32_t)subactionPaths.size();
             REQUIRE_RESULT_UNQUALIFIED_SUCCESS(xrCreateAction(actionSet, &actionInfo, &gripPoseAction));
         }
 
@@ -200,13 +202,11 @@ namespace Conformance
             actionSpaceCreateInfo.subactionPath = leftHandInputDevice->TopLevelPath();
             actionSpaceCreateInfo.action = gripPoseAction;
             XrSpace gripSpace;
-            XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(compositionHelper.GetSession(), &actionSpaceCreateInfo, &gripSpace));
+            XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(session, &actionSpaceCreateInfo, &gripSpace));
             gripSpaces.push_back(gripSpace);
         }
 
         actionLayerManager.SyncActionsUntilFocusWithMessage(syncInfo);
-
-        XrSession session = compositionHelper.GetSession();
 
         std::vector<XrControllerModelKeyMSFT> modelKeys;
         std::map<XrPath, XrControllerModelKeyMSFT> pathsAndKeys;
@@ -216,7 +216,7 @@ namespace Conformance
             [&]() {
                 actionLayerManager.IterateFrame();
 
-                xrSyncActions(compositionHelper.GetSession(), &syncInfo);
+                xrSyncActions(session, &syncInfo);
 
                 for (XrPath subactionPath : subactionPaths) {
                     if (pathsAndKeys.count(subactionPath)) {
@@ -288,11 +288,11 @@ namespace Conformance
             std::string warn;
             bool loadedModel = loader.LoadBinaryFromMemory(&model, &err, &warn, modelBuffer.data(), (unsigned int)modelBuffer.size());
             if (!warn.empty()) {
-                ReportF("glTF WARN: %s", &warn);
+                ReportF("glTF WARN: %s", warn.c_str());
             }
 
             if (!err.empty()) {
-                ReportF("glTF ERR: %s", &err);
+                ReportF("glTF ERR: %s", err.c_str());
             }
 
             if (!loadedModel) {
@@ -330,9 +330,10 @@ namespace Conformance
         CompositionHelper compositionHelper("XR_MSFT_controller_model_inte...", {"XR_MSFT_controller_model"});
 
         XrInstance instance = compositionHelper.GetInstance();
+        XrSession session = compositionHelper.GetSession();
         ExtensionDataForXR_MSFT_controller_model ext(instance);
 
-        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
+        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
 
         // Set up composition projection layer and swapchains (one swapchain per view).
         std::vector<XrSwapchain> swapchains;
@@ -358,18 +359,21 @@ namespace Conformance
         };
 
         Hand hands[2] = {};
-        hands[0].subactionPath = StringToPath(compositionHelper.GetInstance(), "/user/hand/left");
-        hands[1].subactionPath = StringToPath(compositionHelper.GetInstance(), "/user/hand/right");
+        hands[0].subactionPath = StringToPath(instance, "/user/hand/left");
+        hands[1].subactionPath = StringToPath(instance, "/user/hand/right");
 
         // Set up the actions.
-        const std::array<XrPath, 2> subactionPaths{hands[0].subactionPath, hands[1].subactionPath};
+        const std::array<XrPath, 2> subactionPaths{
+            hands[0].subactionPath,
+            hands[1].subactionPath,
+        };
         XrActionSet actionSet;
         XrAction completeAction, gripPoseAction;
         {
             XrActionSetCreateInfo actionSetInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
             strcpy(actionSetInfo.actionSetName, "interaction_test");
             strcpy(actionSetInfo.localizedActionSetName, "Interaction Test");
-            XRC_CHECK_THROW_XRCMD(xrCreateActionSet(compositionHelper.GetInstance(), &actionSetInfo, &actionSet));
+            XRC_CHECK_THROW_XRCMD(xrCreateActionSet(instance, &actionSetInfo, &actionSet));
 
             XrActionCreateInfo actionInfo{XR_TYPE_ACTION_CREATE_INFO};
             actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
@@ -390,31 +394,30 @@ namespace Conformance
         }
 
         const std::vector<XrActionSuggestedBinding> bindings = {
-            {completeAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/menu/click")},
-            {completeAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/menu/click")},
-            {gripPoseAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/grip/pose")},
-            {gripPoseAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/grip/pose")},
+            {completeAction, StringToPath(instance, "/user/hand/left/input/menu/click")},
+            {completeAction, StringToPath(instance, "/user/hand/right/input/menu/click")},
+            {gripPoseAction, StringToPath(instance, "/user/hand/left/input/grip/pose")},
+            {gripPoseAction, StringToPath(instance, "/user/hand/right/input/grip/pose")},
         };
 
         XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
-        suggestedBindings.interactionProfile = StringToPath(compositionHelper.GetInstance(), "/interaction_profiles/khr/simple_controller");
+        suggestedBindings.interactionProfile = StringToPath(instance, "/interaction_profiles/khr/simple_controller");
         suggestedBindings.suggestedBindings = bindings.data();
         suggestedBindings.countSuggestedBindings = (uint32_t)bindings.size();
-        XRC_CHECK_THROW_XRCMD(xrSuggestInteractionProfileBindings(compositionHelper.GetInstance(), &suggestedBindings));
+        XRC_CHECK_THROW_XRCMD(xrSuggestInteractionProfileBindings(instance, &suggestedBindings));
 
         XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
         attachInfo.actionSets = &actionSet;
         attachInfo.countActionSets = 1;
-        XRC_CHECK_THROW_XRCMD(xrAttachSessionActionSets(compositionHelper.GetSession(), &attachInfo));
+        XRC_CHECK_THROW_XRCMD(xrAttachSessionActionSets(session, &attachInfo));
 
         compositionHelper.BeginSession();
-        XrSession session = compositionHelper.GetSession();
         auto& graphicsPlugin = GetGlobalData().graphicsPlugin;
 
         // Create the instructional quad layer placed to the left.
         XrCompositionLayerQuad* const instructionsQuad =
             compositionHelper.CreateQuadLayer(compositionHelper.CreateStaticSwapchainImage(CreateTextImage(1024, 768, instructions, 48)),
-                                              localSpace, 1, {{0, 0, 0, 1}, {-1.5f, 0, -0.3f}});
+                                              localSpace, 1, {Quat::Identity, {-1.5f, 0, -0.3f}});
         instructionsQuad->pose.orientation = Quat::FromAxisAngle(Up, DegToRad(70));
 
         // Initialize an XrSpace for each hand
@@ -423,7 +426,7 @@ namespace Conformance
             spaceCreateInfo.subactionPath = hand.subactionPath;
             spaceCreateInfo.action = gripPoseAction;
             spaceCreateInfo.poseInActionSpace = Pose::Identity;
-            XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(compositionHelper.GetSession(), &spaceCreateInfo, &hand.space));
+            XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(session, &spaceCreateInfo, &hand.space));
         }
 
         auto update = [&](const XrFrameState& frameState) {
@@ -434,15 +437,14 @@ namespace Conformance
             XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
             syncInfo.activeActionSets = activeActionSets.data();
             syncInfo.countActiveActionSets = (uint32_t)activeActionSets.size();
-            XRC_CHECK_THROW_XRCMD(xrSyncActions(compositionHelper.GetSession(), &syncInfo));
+            XRC_CHECK_THROW_XRCMD(xrSyncActions(session, &syncInfo));
 
             // Check if user has requested to complete the test.
             {
                 XrActionStateGetInfo completeActionGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
                 completeActionGetInfo.action = completeAction;
                 XrActionStateBoolean completeActionState{XR_TYPE_ACTION_STATE_BOOLEAN};
-                XRC_CHECK_THROW_XRCMD(
-                    xrGetActionStateBoolean(compositionHelper.GetSession(), &completeActionGetInfo, &completeActionState));
+                XRC_CHECK_THROW_XRCMD(xrGetActionStateBoolean(session, &completeActionGetInfo, &completeActionState));
                 if (completeActionState.currentState == XR_TRUE && completeActionState.changedSinceLastSync) {
                     return false;
                 }
@@ -516,15 +518,13 @@ namespace Conformance
 
                 // Render into each of the separate swapchains using the projection layer view fov and pose.
                 for (size_t view = 0; view < views.size(); view++) {
-                    compositionHelper.AcquireWaitReleaseImage(swapchains[view],  //
-                                                              [&](const XrSwapchainImageBaseHeader* swapchainImage) {
-                                                                  GetGlobalData().graphicsPlugin->ClearImageSlice(swapchainImage, 0);
-                                                                  const_cast<XrFovf&>(projLayer->views[view].fov) = views[view].fov;
-                                                                  const_cast<XrPosef&>(projLayer->views[view].pose) = views[view].pose;
-                                                                  GetGlobalData().graphicsPlugin->RenderView(
-                                                                      projLayer->views[view], swapchainImage,
-                                                                      RenderParams().Draw(renderedCubes).Draw(renderedGLTFs));
-                                                              });
+                    compositionHelper.AcquireWaitReleaseImage(swapchains[view], [&](const XrSwapchainImageBaseHeader* swapchainImage) {
+                        GetGlobalData().graphicsPlugin->ClearImageSlice(swapchainImage);
+                        const_cast<XrFovf&>(projLayer->views[view].fov) = views[view].fov;
+                        const_cast<XrPosef&>(projLayer->views[view].pose) = views[view].pose;
+                        GetGlobalData().graphicsPlugin->RenderView(projLayer->views[view], swapchainImage,
+                                                                   RenderParams().Draw(renderedCubes).Draw(renderedGLTFs));
+                    });
                 }
 
                 layers.push_back({reinterpret_cast<XrCompositionLayerBaseHeader*>(projLayer)});
@@ -538,7 +538,7 @@ namespace Conformance
             return true;
         };
 
-        RenderLoop(compositionHelper.GetSession(), update).Loop();
+        RenderLoop(session, update).Loop();
     }
 
 }  // namespace Conformance

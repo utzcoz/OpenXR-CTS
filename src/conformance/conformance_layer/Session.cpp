@@ -15,6 +15,7 @@
 // limitations under the License.
 
 #include <assert.h>
+#include <inttypes.h>
 #include "ConformanceHooks.h"
 #include "CustomHandleState.h"
 #include "RuntimeFailure.h"
@@ -302,7 +303,7 @@ XrResult ConformanceHooks::xrEndSession(XrSession session)
     if (XR_SUCCEEDED(result)) {
         NONCONFORMANT_IF(!customSessionState->sessionBegun, "Expected XR_ERROR_SESSION_NOT_RUNNING but got %s", to_string(result));
         POSSIBLE_NONCONFORMANT_IF(customSessionState->sessionState != XR_SESSION_STATE_STOPPING,
-                                  "Expected XR_ERROR_SESSION_NOT_STOPPING when last known session state was %s", to_string(result),
+                                  "Expected XR_ERROR_SESSION_NOT_STOPPING when last known session state was %s",
                                   to_string(customSessionState->sessionState));
 
         customSessionState->sessionBegun = false;
@@ -351,7 +352,7 @@ XrResult ConformanceHooks::xrWaitFrame(XrSession session, const XrFrameWaitInfo*
         // to xrWaitFrame must block the caller until the start of the next rendering interval after the frame's target display time
         // as determined by the runtime.
         NONCONFORMANT_IF(frameState->predictedDisplayTime <= customSessionState->lastPredictedDisplayTime,
-                         "New predicted display time %lld is less or equal to the previous predicted display time %lld",
+                         "New predicted display time %" PRId64 " is less or equal to the previous predicted display time %" PRId64,
                          frameState->predictedDisplayTime, customSessionState->lastPredictedDisplayTime);
 
         customSessionState->lastPredictedDisplayTime = frameState->predictedDisplayTime;

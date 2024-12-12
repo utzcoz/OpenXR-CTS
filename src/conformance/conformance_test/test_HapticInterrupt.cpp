@@ -21,6 +21,7 @@
 #include "graphics_plugin.h"
 #include "utilities/throw_helpers.h"
 #include "utilities/types_and_constants.h"
+#include "utilities/xr_math_operators.h"
 
 #include <openxr/openxr.h>
 #include <catch2/catch_test_macros.hpp>
@@ -51,8 +52,9 @@ namespace Conformance
             "Press the menu button on either controller to pass the test. ";
 
         CompositionHelper compositionHelper("Haptic Interrupt");
-
-        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
+        XrInstance instance = compositionHelper.GetInstance();
+        XrSession session = compositionHelper.GetSession();
+        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
 
         // Set up composition projection layer and swapchains (one swapchain per view).
         std::vector<XrSwapchain> swapchains;
@@ -67,8 +69,10 @@ namespace Conformance
             }
         }
 
-        const std::vector<XrPath> subactionPaths{StringToPath(compositionHelper.GetInstance(), "/user/hand/left"),
-                                                 StringToPath(compositionHelper.GetInstance(), "/user/hand/right")};
+        const std::array<XrPath, 2> subactionPaths{
+            StringToPath(instance, "/user/hand/left"),
+            StringToPath(instance, "/user/hand/right"),
+        };
 
         XrActionSet actionSet;
         XrAction hapticAction, completeAction, gripPoseAction, applyHapticAction;
@@ -76,7 +80,7 @@ namespace Conformance
             XrActionSetCreateInfo actionSetInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
             strcpy(actionSetInfo.actionSetName, "interaction_test");
             strcpy(actionSetInfo.localizedActionSetName, "Interaction Test");
-            XRC_CHECK_THROW_XRCMD(xrCreateActionSet(compositionHelper.GetInstance(), &actionSetInfo, &actionSet));
+            XRC_CHECK_THROW_XRCMD(xrCreateActionSet(instance, &actionSetInfo, &actionSet));
 
             XrActionCreateInfo actionInfo{XR_TYPE_ACTION_CREATE_INFO};
             actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
@@ -111,33 +115,33 @@ namespace Conformance
         }
 
         const std::vector<XrActionSuggestedBinding> bindings = {
-            {completeAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/menu/click")},
-            {completeAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/menu/click")},
-            {applyHapticAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/select/click")},
-            {applyHapticAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/select/click")},
-            {gripPoseAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/input/grip/pose")},
-            {gripPoseAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/input/grip/pose")},
-            {hapticAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/left/output/haptic")},
-            {hapticAction, StringToPath(compositionHelper.GetInstance(), "/user/hand/right/output/haptic")},
+            {completeAction, StringToPath(instance, "/user/hand/left/input/menu/click")},
+            {completeAction, StringToPath(instance, "/user/hand/right/input/menu/click")},
+            {applyHapticAction, StringToPath(instance, "/user/hand/left/input/select/click")},
+            {applyHapticAction, StringToPath(instance, "/user/hand/right/input/select/click")},
+            {gripPoseAction, StringToPath(instance, "/user/hand/left/input/grip/pose")},
+            {gripPoseAction, StringToPath(instance, "/user/hand/right/input/grip/pose")},
+            {hapticAction, StringToPath(instance, "/user/hand/left/output/haptic")},
+            {hapticAction, StringToPath(instance, "/user/hand/right/output/haptic")},
         };
 
         XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
-        suggestedBindings.interactionProfile = StringToPath(compositionHelper.GetInstance(), "/interaction_profiles/khr/simple_controller");
+        suggestedBindings.interactionProfile = StringToPath(instance, "/interaction_profiles/khr/simple_controller");
         suggestedBindings.suggestedBindings = bindings.data();
         suggestedBindings.countSuggestedBindings = (uint32_t)bindings.size();
-        XRC_CHECK_THROW_XRCMD(xrSuggestInteractionProfileBindings(compositionHelper.GetInstance(), &suggestedBindings));
+        XRC_CHECK_THROW_XRCMD(xrSuggestInteractionProfileBindings(instance, &suggestedBindings));
 
         XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
         attachInfo.actionSets = &actionSet;
         attachInfo.countActionSets = 1;
-        XRC_CHECK_THROW_XRCMD(xrAttachSessionActionSets(compositionHelper.GetSession(), &attachInfo));
+        XRC_CHECK_THROW_XRCMD(xrAttachSessionActionSets(session, &attachInfo));
 
         compositionHelper.BeginSession();
 
         // Create the instructional quad layer placed to the left.
         XrCompositionLayerQuad* const instructionsQuad =
             compositionHelper.CreateQuadLayer(compositionHelper.CreateStaticSwapchainImage(CreateTextImage(1024, 512, instructions, 48)),
-                                              localSpace, 1, {{0, 0, 0, 1}, {-1.5f, 0, -0.3f}});
+                                              localSpace, 1.0f, {Quat::Identity, {-1.5f, 0, -0.3f}});
         instructionsQuad->pose.orientation = Quat::FromAxisAngle(Up, DegToRad(70));
 
         struct Hand
@@ -148,15 +152,15 @@ namespace Conformance
         };
 
         Hand hands[2];
-        hands[0].subactionPath = StringToPath(compositionHelper.GetInstance(), "/user/hand/left");
-        hands[1].subactionPath = StringToPath(compositionHelper.GetInstance(), "/user/hand/right");
+        hands[0].subactionPath = StringToPath(instance, "/user/hand/left");
+        hands[1].subactionPath = StringToPath(instance, "/user/hand/right");
 
         for (Hand& hand : hands) {
             XrActionSpaceCreateInfo spaceCreateInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
             spaceCreateInfo.action = gripPoseAction;
             spaceCreateInfo.subactionPath = hand.subactionPath;
-            spaceCreateInfo.poseInActionSpace.orientation.w = 1.0f;
-            XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(compositionHelper.GetSession(), &spaceCreateInfo, &hand.space));
+            spaceCreateInfo.poseInActionSpace = Pose::Identity;
+            XRC_CHECK_THROW_XRCMD(xrCreateActionSpace(session, &spaceCreateInfo, &hand.space));
         }
 
         constexpr XrVector3f cubeScale{0.1f, 0.1f, 0.1f};
@@ -167,15 +171,14 @@ namespace Conformance
             XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
             syncInfo.activeActionSets = activeActionSets.data();
             syncInfo.countActiveActionSets = (uint32_t)activeActionSets.size();
-            XRC_CHECK_THROW_XRCMD(xrSyncActions(compositionHelper.GetSession(), &syncInfo));
+            XRC_CHECK_THROW_XRCMD(xrSyncActions(session, &syncInfo));
 
             // Check if user has requested to complete the test.
             {
                 XrActionStateGetInfo completeActionGetInfo{XR_TYPE_ACTION_STATE_GET_INFO};
                 completeActionGetInfo.action = completeAction;
                 XrActionStateBoolean completeActionState{XR_TYPE_ACTION_STATE_BOOLEAN};
-                XRC_CHECK_THROW_XRCMD(
-                    xrGetActionStateBoolean(compositionHelper.GetSession(), &completeActionGetInfo, &completeActionState));
+                XRC_CHECK_THROW_XRCMD(xrGetActionStateBoolean(session, &completeActionGetInfo, &completeActionState));
                 if (completeActionState.currentState == XR_TRUE && completeActionState.changedSinceLastSync) {
                     return false;
                 }
@@ -196,7 +199,7 @@ namespace Conformance
                 actionStateGetInfo.action = applyHapticAction;
                 actionStateGetInfo.subactionPath = hand.subactionPath;
                 XrActionStateBoolean applyHapticValue{XR_TYPE_ACTION_STATE_BOOLEAN};
-                XRC_CHECK_THROW_XRCMD(xrGetActionStateBoolean(compositionHelper.GetSession(), &actionStateGetInfo, &applyHapticValue));
+                XRC_CHECK_THROW_XRCMD(xrGetActionStateBoolean(session, &actionStateGetInfo, &applyHapticValue));
 
                 if (applyHapticValue.currentState == XR_TRUE && applyHapticValue.changedSinceLastSync) {
                     XrHapticActionInfo hapticInfo{XR_TYPE_HAPTIC_ACTION_INFO};
@@ -206,8 +209,7 @@ namespace Conformance
                     vibration.amplitude = hand.highAmplitude ? 0.75f : 0.25f;
                     vibration.duration = 2000000000;
                     vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
-                    XRC_CHECK_THROW_XRCMD(
-                        xrApplyHapticFeedback(compositionHelper.GetSession(), &hapticInfo, (XrHapticBaseHeader*)&vibration));
+                    XRC_CHECK_THROW_XRCMD(xrApplyHapticFeedback(session, &hapticInfo, (XrHapticBaseHeader*)&vibration));
 
                     hand.highAmplitude = !hand.highAmplitude;
                 }
@@ -224,7 +226,7 @@ namespace Conformance
                 // Render into each of the separate swapchains using the projection layer view fov and pose.
                 for (size_t view = 0; view < views.size(); view++) {
                     compositionHelper.AcquireWaitReleaseImage(swapchains[view], [&](const XrSwapchainImageBaseHeader* swapchainImage) {
-                        GetGlobalData().graphicsPlugin->ClearImageSlice(swapchainImage, 0);
+                        GetGlobalData().graphicsPlugin->ClearImageSlice(swapchainImage);
                         const_cast<XrFovf&>(projLayer->views[view].fov) = views[view].fov;
                         const_cast<XrPosef&>(projLayer->views[view].pose) = views[view].pose;
                         GetGlobalData().graphicsPlugin->RenderView(projLayer->views[view], swapchainImage,
@@ -243,6 +245,6 @@ namespace Conformance
             return true;
         };
 
-        RenderLoop(compositionHelper.GetSession(), update).Loop();
+        RenderLoop(session, update).Loop();
     }
 }  // namespace Conformance

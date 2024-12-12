@@ -188,11 +188,11 @@ namespace Conformance
                                      uint32_t* imageCount) const override;
         bool ValidateSwapchainImageState(XrSwapchain swapchain, uint32_t index, int64_t imageFormat) const override;
 
-        int64_t SelectColorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectColorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
-        int64_t SelectDepthSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectDepthSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
-        int64_t SelectMotionVectorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectMotionVectorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
         // Format required by RGBAImage type.
         int64_t GetSRGBA8Format() const override;
@@ -215,6 +215,9 @@ namespace Conformance
 
         void RenderView(const XrCompositionLayerProjectionView& layerView, const XrSwapchainImageBaseHeader* colorSwapchainImage,
                         const RenderParams& params) override;
+
+        void RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                          const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color) override;
 
     private:
         ComPtr<ID3D11RenderTargetView> CreateRenderTargetView(D3D11SwapchainImageData& swapchainData, uint32_t imageIndex,
@@ -500,7 +503,37 @@ namespace Conformance
 
     bool D3D11GraphicsPlugin::GetSwapchainCreateTestParameters(int64_t imageFormat, SwapchainCreateTestParameters* swapchainTestParameters)
     {
-        return GetDxgiSwapchainCreateTestParameters(imageFormat, swapchainTestParameters);
+        bool success = GetDxgiSwapchainCreateTestParameters(imageFormat, swapchainTestParameters);
+
+        if (!success) {
+            return success;
+        }
+
+        /// @todo Conformance::GetDxgiSwapchainTestMap() has no access to our d3d11 objects, therefore remove the wrongly added unordered access here.
+        bool supportsUnorderedAccess = false;
+        D3D11_FEATURE_DATA_FORMAT_SUPPORT formatSupport = {(DXGI_FORMAT)imageFormat};
+        if (SUCCEEDED(d3d11Device->CheckFeatureSupport(D3D11_FEATURE_FORMAT_SUPPORT, &formatSupport, sizeof(formatSupport)))) {
+            if ((formatSupport.OutFormatSupport & D3D11_FORMAT_SUPPORT_TYPED_UNORDERED_ACCESS_VIEW) != 0) {
+                supportsUnorderedAccess = true;
+            }
+        }
+        else {
+            WARN("Failed to check format support.");
+        }
+
+        swapchainTestParameters->usageFlagsVector.erase(
+            std::remove_if(swapchainTestParameters->usageFlagsVector.begin(), swapchainTestParameters->usageFlagsVector.end(),
+                           [&](auto uf) {
+                               if ((uf & XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT) != 0) {
+                                   if (!supportsUnorderedAccess) {
+                                       return true;
+                                   }
+                               }
+                               return false;
+                           }),
+            swapchainTestParameters->usageFlagsVector.end());
+
+        return true;
     }
 
     bool D3D11GraphicsPlugin::ValidateSwapchainImages(int64_t /*imageFormat*/, const SwapchainCreateTestParameters* tp,
@@ -560,56 +593,44 @@ namespace Conformance
     }
 
     // Select the preferred swapchain format from the list of available formats.
-    int64_t D3D11GraphicsPlugin::SelectColorSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t D3D11GraphicsPlugin::SelectColorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
         // List of supported color swapchain formats.
-        const std::array<DXGI_FORMAT, 4> f{DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_R8G8B8A8_UNORM,
-                                           DXGI_FORMAT_B8G8R8A8_UNORM};
-
-        const int64_t* formatArrayEnd = formatArray + count;
-        auto it = std::find_first_of(formatArray, formatArrayEnd, f.begin(), f.end());
-
-        if (it == formatArrayEnd) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
-        }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+                DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,
+                DXGI_FORMAT_R8G8B8A8_UNORM,
+                DXGI_FORMAT_B8G8R8A8_UNORM,
+            });
     }
 
     // Select the preferred swapchain format from the list of available formats.
-    int64_t D3D11GraphicsPlugin::SelectDepthSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t D3D11GraphicsPlugin::SelectDepthSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
         // List of supported depth swapchain formats.
-        const std::array<DXGI_FORMAT, 4> f{DXGI_FORMAT_D32_FLOAT, DXGI_FORMAT_D24_UNORM_S8_UINT, DXGI_FORMAT_D16_UNORM,
-                                           DXGI_FORMAT_D32_FLOAT_S8X24_UINT};
-
-        const int64_t* formatArrayEnd = formatArray + count;
-        auto it = std::find_first_of(formatArray, formatArrayEnd, f.begin(), f.end());
-
-        if (it == formatArrayEnd) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
-        }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                DXGI_FORMAT_D32_FLOAT,
+                DXGI_FORMAT_D24_UNORM_S8_UINT,
+                DXGI_FORMAT_D16_UNORM,
+                DXGI_FORMAT_D32_FLOAT_S8X24_UINT,
+            });
     }
 
     // Select the preferred swapchain format from the list of available formats.
-    int64_t D3D11GraphicsPlugin::SelectMotionVectorSwapchainFormat(const int64_t* formatArray, size_t count) const
+    int64_t D3D11GraphicsPlugin::SelectMotionVectorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
-        // List of swapchain formats suitable for motion vectors.
-        const std::array<DXGI_FORMAT, 2> f{DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_R32G32B32_FLOAT};
-
-        const int64_t* formatArrayEnd = formatArray + count;
-        auto it = std::find_first_of(formatArray, formatArrayEnd, f.begin(), f.end());
-
-        if (it == formatArrayEnd) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return formatArray[0];
+        // Implementation must select a signed format with four components unless there are none with alpha.
+        int64_t alphaFormat = SelectSwapchainFormat(  //
+            false, imageFormatArray, {DXGI_FORMAT_R16G16B16A16_FLOAT});
+        if (alphaFormat != -1) {
+            return alphaFormat;
         }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray, {DXGI_FORMAT_R32G32B32_FLOAT});
     }
 
     int64_t D3D11GraphicsPlugin::GetSRGBA8Format() const
@@ -822,6 +843,30 @@ namespace Conformance
 
             gltf.Render(d3d11DeviceContext, *m_pbrResources, modelToWorld);
         }
+    }
+
+    void D3D11GraphicsPlugin::RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                                           const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color)
+    {
+        (void)layerView;
+        (void)color;
+
+        D3D11SwapchainImageData* swapchainData;
+        uint32_t imageIndex;
+
+        std::tie(swapchainData, imageIndex) = m_swapchainImageDataMap.GetDataAndIndexFromBasePointer(colorSwapchainImage);
+
+        ID3D11Texture2D* const colorTexture = swapchainData->GetTypedImage(imageIndex).texture;
+
+        D3D11_TEXTURE2D_DESC desc{};
+        colorTexture->GetDesc(&desc);
+
+        REQUIRE((desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) != 0);
+
+        bool defaultOrDynamicUsage = (desc.Usage == D3D11_USAGE_DEFAULT || desc.Usage == D3D11_USAGE_DYNAMIC);
+        REQUIRE(defaultOrDynamicUsage);
+
+        /// @todo: implement actual rendering
     }
 
     std::shared_ptr<IGraphicsPlugin> CreateGraphicsPlugin_D3D11(std::shared_ptr<IPlatformPlugin> platformPlugin)

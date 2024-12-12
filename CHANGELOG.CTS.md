@@ -17,6 +17,56 @@ particular, since it is primarily software, pull requests may be integrated as
 they are accepted even between periodic updates. However, versions that are not
 signed tags on the `approved` branch are not valid for conformance submission.
 
+## OpenXR CTS 1.1.43.0 (2024-12-12)
+
+- Conformance Tests
+  - Fix: Correctly load the `glCompressedTexImage2D` function
+    ([internal MR 3555](https://gitlab.khronos.org/openxr/openxr/merge_requests/3555),
+    [internal issue 2390](https://gitlab.khronos.org/openxr/openxr/issues/2390))
+  - Fix: Upload compressed and mip-mapped textures correctly on OpenGL and OpenGL
+    ES
+    ([internal MR 3555](https://gitlab.khronos.org/openxr/openxr/merge_requests/3555),
+    [internal issue 2390](https://gitlab.khronos.org/openxr/openxr/issues/2390))
+  - Fix: Fix printing of some printf-based messages in the CTS.
+    ([internal MR 3582](https://gitlab.khronos.org/openxr/openxr/merge_requests/3582))
+  - Fix: Broken Android builds - not runnable due to undefined symbol.
+    ([internal MR 3596](https://gitlab.khronos.org/openxr/openxr/merge_requests/3596))
+  - Fix: Install manifest for conformance test layer
+    ([OpenXR-CTS PR 100](https://github.com/KhronosGroup/OpenXR-CTS/pull/100))
+  - Improvement: Simplify and refactor selection of swapchain formats.
+    ([internal MR 3368](https://gitlab.khronos.org/openxr/openxr/merge_requests/3368))
+  - Improvement: Add ability to quit/fail test for `XR_EXT_eye_gaze_interaction` by
+    closing your eyes or otherwise losing eye tracking for 10 seconds.
+    ([internal MR 3401](https://gitlab.khronos.org/openxr/openxr/merge_requests/3401),
+    [internal MR 3587](https://gitlab.khronos.org/openxr/openxr/merge_requests/3587))
+  - Improvement: Add example image for _Anisotropy Barn Lamp_ self-test
+    ([internal MR 3555](https://gitlab.khronos.org/openxr/openxr/merge_requests/3555))
+  - Improvement: Rename types, fields, and variables to use the term "binding path"
+    when appropriate. In the past these have sometimes been confusingly called
+    "input sources" despite being unrelated to the paths returned from
+    `xrEnumerateBoundSourcesForAction` and passed to
+    `xrGetInputSourceLocalizedName`.
+    ([internal MR 3561](https://gitlab.khronos.org/openxr/openxr/merge_requests/3561))
+  - Improvement: Code cleanup, documentation, and consistency improvements.
+    ([internal MR 3575](https://gitlab.khronos.org/openxr/openxr/merge_requests/3575),
+    [internal MR 3609](https://gitlab.khronos.org/openxr/openxr/merge_requests/3609))
+  - Improvement: Update jnipp, used for Android loader builds. New version includes
+    a build fix for some environments, as well as a crash fix.
+    ([internal MR 3589](https://gitlab.khronos.org/openxr/openxr/merge_requests/3589))
+  - Improvement: Add Vulkan debug messages during Vulkan instance creation.
+    ([internal MR 3592](https://gitlab.khronos.org/openxr/openxr/merge_requests/3592))
+  - Improvement: Test correct non-availability in the `xrLocateSpacesKHR` and
+    `xrLocateSpaces` tests, as well as the non-interactive local floor tests.
+    ([internal MR 3619](https://gitlab.khronos.org/openxr/openxr/merge_requests/3619))
+  - New test: Automated test that attempts to write from a compute shader to
+    swapchain images in formats that support unordered access, via Vulkan. D3D11/12
+    check flags to see that they *could* do so but do not yet actually attempt it.
+    ([internal MR 3379](https://gitlab.khronos.org/openxr/openxr/merge_requests/3379),
+    [internal issue 2162](https://gitlab.khronos.org/openxr/openxr/issues/2162),
+    [internal issue 2400](https://gitlab.khronos.org/openxr/openxr/issues/2400),
+    [internal MR 2597](https://gitlab.khronos.org/openxr/openxr/merge_requests/2597),
+    [internal MR 3600](https://gitlab.khronos.org/openxr/openxr/merge_requests/3600))
+
 ## OpenXR CTS 1.1.42.0 (2024-11-07)
 
 This release, like the previous one, has a separate "Usage Guide" document with

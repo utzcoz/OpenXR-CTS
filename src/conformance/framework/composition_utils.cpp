@@ -213,10 +213,8 @@ namespace Conformance
         }
 
         if (GetGlobalData().IsUsingGraphicsPlugin()) {
-            m_defaultColorFormat =
-                GetGlobalData().graphicsPlugin->SelectColorSwapchainFormat(swapchainFormats.data(), swapchainFormats.size());
-            m_defaultDepthFormat =
-                GetGlobalData().graphicsPlugin->SelectDepthSwapchainFormat(swapchainFormats.data(), swapchainFormats.size());
+            m_defaultColorFormat = GetGlobalData().graphicsPlugin->SelectColorSwapchainFormat(true, swapchainFormats);
+            m_defaultDepthFormat = GetGlobalData().graphicsPlugin->SelectDepthSwapchainFormat(true, swapchainFormats);
         }
         else {
             m_defaultColorFormat = static_cast<uint64_t>(-1);
@@ -612,7 +610,7 @@ namespace Conformance
     }
 
     BaseProjectionLayerHelper::BaseProjectionLayerHelper(CompositionHelper& compositionHelper, XrReferenceSpaceType spaceType)
-        : m_compositionHelper(compositionHelper), m_localSpace(compositionHelper.CreateReferenceSpace(spaceType, Pose::Identity))
+        : m_compositionHelper(compositionHelper), m_localSpace(compositionHelper.CreateReferenceSpace(spaceType))
     {
         const std::vector<XrViewConfigurationView> viewProperties = compositionHelper.EnumerateConfigurationViews();
 

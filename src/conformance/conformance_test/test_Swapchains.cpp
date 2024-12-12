@@ -25,6 +25,7 @@
 #include "utilities/throw_helpers.h"
 #include "utilities/types_and_constants.h"
 #include "utilities/utils.h"
+#include "utilities/xr_math_operators.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_vector.hpp>
@@ -39,12 +40,21 @@ XRC_DISABLE_MSVC_WARNING(4505)  // unreferenced local function has been removed
 namespace Conformance
 {
 
+    namespace
+    {
+        enum class RenderTestRoutine
+        {
+            ClearAndRender,
+            ClearWithCompute,
+        };
+    }
+
     static void DoRenderTest(ISwapchainImageData* swapchainImages, uint32_t colorImageCount, const XrSwapchainCreateInfo& colorCreateInfo,
-                             XrSwapchain colorSwapchain)
+                             XrSwapchain colorSwapchain, RenderTestRoutine renderRoutine)
     {
 
         XrCompositionLayerProjectionView projectionView{XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW};
-        projectionView.pose = XrPosef{{0, 0, 0, 1}, {0, 0, 0}};
+        projectionView.pose = Pose::Identity;
         projectionView.fov = {1, 1, 1, 1};
         projectionView.subImage.swapchain = colorSwapchain;
         projectionView.subImage.imageRect = {{0, 0}, {(int32_t)colorCreateInfo.width, (int32_t)colorCreateInfo.height}};
@@ -76,8 +86,18 @@ namespace Conformance
             {
                 INFO("Rendering to the swapchain(s)");
                 const XrSwapchainImageBaseHeader* image = swapchainImages->GetGenericColorImage(colorImageIndex);
-                GetGlobalData().graphicsPlugin->ClearImageSlice(image, 0);
-                GetGlobalData().graphicsPlugin->RenderView(projectionView, image, {});
+
+                switch (renderRoutine) {
+                case RenderTestRoutine::ClearAndRender:
+                    GetGlobalData().graphicsPlugin->ClearImageSlice(image, 0);
+                    GetGlobalData().graphicsPlugin->RenderView(projectionView, image, {});
+                    break;
+
+                case RenderTestRoutine::ClearWithCompute:
+                    // this is only implemented in the Vulkan plugin
+                    GetGlobalData().graphicsPlugin->RenderClearImageSliceCompute(projectionView, image, {1.0, 0.0, 0.0, 1.0});
+                    break;
+                }
             }
             {
                 INFO("Release the depth image if applicable");
@@ -489,7 +509,10 @@ namespace Conformance
         }
     }
 
-    TEST_CASE("SwapchainsRender", "")
+    void SwapchainsCommonTest(
+        const std::function<bool(SwapchainCreateTestParameters&)>& skipFormatCondition,
+        const std::function<bool(SwapchainCreateTestParameters&, XrSwapchainCreateInfo& createInfo)>& skipCreateInfoCondition,
+        RenderTestRoutine renderRoutine)
     {
         const GlobalData& globalData = GetGlobalData();
         if (!globalData.IsUsingGraphicsPlugin()) {
@@ -524,13 +547,7 @@ namespace Conformance
             SwapchainCreateTestParameters tp;
             REQUIRE(globalData.graphicsPlugin->GetSwapchainCreateTestParameters(imageFormat, &tp));
 
-            if (!tp.supportsRendering) {
-                // skip this format
-                continue;
-            }
-
-            if (!tp.colorFormat && !tp.useAsDepth) {
-                // Image does not have a usable color or depth aspect
+            if (skipFormatCondition(tp)) {
                 continue;
             }
 
@@ -546,6 +563,10 @@ namespace Conformance
                         auto createInfo = nameAndCreateInfo.second;
                         if ((createInfo.createFlags & XR_SWAPCHAIN_CREATE_STATIC_IMAGE_BIT) != 0) {
                             // Do not try rendering to static swapchains for now, complicated
+                            continue;
+                        }
+
+                        if (skipCreateInfoCondition(tp, createInfo)) {
                             continue;
                         }
 
@@ -613,7 +634,7 @@ namespace Conformance
                         XRC_CHECK_THROW_XRCMD(xrEnumerateSwapchainImages(colorSwapchain.get(), colorImageCount, &colorImageCount,
                                                                          swapchainImages->GetColorImageArray()));
 
-                        DoRenderTest(swapchainImages, colorImageCount, colorCreateInfo, colorSwapchain.get());
+                        DoRenderTest(swapchainImages, colorImageCount, colorCreateInfo, colorSwapchain.get(), renderRoutine);
                         GetGlobalData().graphicsPlugin->Flush();
                     }
 
@@ -622,6 +643,60 @@ namespace Conformance
                 }
             }
         }
+    }
+
+    TEST_CASE("SwapchainsRender", "")
+    {
+        auto skipTpCondition = [](SwapchainCreateTestParameters& tp) -> bool {
+            if (!tp.supportsRendering) {
+                // skip this format
+                return true;
+            }
+
+            if (!tp.colorFormat && !tp.useAsDepth) {
+                // Image does not have a usable color or depth aspect
+                return true;
+            }
+
+            return false;
+        };
+
+        auto skipCreateInfoCondition = [](SwapchainCreateTestParameters& tp, XrSwapchainCreateInfo& createInfo) -> bool {
+            (void)tp;
+            (void)createInfo;
+            return false;
+        };
+        SwapchainsCommonTest(skipTpCondition, skipCreateInfoCondition, RenderTestRoutine::ClearAndRender);
+    }
+
+    // Ensure that XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT is respected by rendering to the swapchain image with a compute shader in RenderClearImageSliceCompute
+    TEST_CASE("SwapchainsUnorderedAccess", "")
+    {
+        auto skipTpCondition = [](SwapchainCreateTestParameters& tp) -> bool {
+            (void)tp;
+            // Never skip an entire format
+            return false;
+        };
+
+        auto skipCreateInfoCondition = [](SwapchainCreateTestParameters& tp, XrSwapchainCreateInfo& createInfo) -> bool {
+            (void)tp;
+            //! @todo Only testing unordered access in combination with color attachment for now.
+            constexpr XrSwapchainUsageFlags uaColorFlags =
+                XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT;
+
+            // Check whether createInfo.usageFlags contains *all* flags contained in uaColorFlags
+            if ((createInfo.usageFlags & uaColorFlags) != uaColorFlags) {
+                return true;
+            }
+
+            if (createInfo.arraySize > 1) {
+                // Skip XrSwapchainCreateInfo array texture
+                return true;
+            }
+            return false;
+        };
+
+        SwapchainsCommonTest(skipTpCondition, skipCreateInfoCondition, RenderTestRoutine::ClearWithCompute);
     }
 
     TEST_CASE("SwapchainsAcquire", "")

@@ -315,7 +315,7 @@ namespace Conformance
         interactionManager.AttachActionSets();
         compositionHelper.BeginSession();
 
-        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
+        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
 
         const std::vector<XrViewConfigurationView> viewProperties = compositionHelper.EnumerateConfigurationViews();
 
@@ -387,7 +387,7 @@ namespace Conformance
         interactionManager.AttachActionSets();
         compositionHelper.BeginSession();
 
-        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
+        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
 
         const std::vector<XrViewConfigurationView> viewProperties = compositionHelper.EnumerateConfigurationViews();
 
@@ -486,7 +486,10 @@ namespace Conformance
                                                         "that \'R\' is always rendered atop \'L\', "
                                                         "and both are atop the cubes when visible.");
 
-        const std::vector<XrPath> subactionPaths{StringToPath(instance, "/user/hand/left"), StringToPath(instance, "/user/hand/right")};
+        const std::array<XrPath, 2> subactionPaths{
+            StringToPath(instance, "/user/hand/left"),
+            StringToPath(instance, "/user/hand/right"),
+        };
 
         XrActionSet actionSet;
         XrAction gripPoseAction;
@@ -590,7 +593,7 @@ namespace Conformance
         interactionManager.AttachActionSets();
         compositionHelper.BeginSession();
 
-        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
+        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
 
         if (!compositionHelper.GetViewConfigurationProperties().fovMutable) {
             SKIP("View configuration does not support mutable FoV");
@@ -762,7 +765,7 @@ namespace Conformance
         interactionManager.AttachActionSets();
         compositionHelper.BeginSession();
 
-        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
+        const XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
 
         const std::vector<XrViewConfigurationView> viewProperties = compositionHelper.EnumerateConfigurationViews();
 
@@ -776,39 +779,39 @@ namespace Conformance
         }
 
         const int LayerCount = 2;
-        XrCompositionLayerProjection* projLayer[LayerCount];
+        XrCompositionLayerProjection* projLayers[LayerCount];
         XrCompositionLayerDepthTestFB depthTestInfo[LayerCount];
         std::vector<std::pair<XrSwapchain, XrSwapchain>> swapchain[LayerCount];
         std::vector<XrCompositionLayerDepthInfoKHR> depthInfo[LayerCount];
 
         // Set up the projection layers
         for (int layer = 0; layer < LayerCount; layer++) {
-            projLayer[layer] = compositionHelper.CreateProjectionLayer(localSpace);
+            projLayers[layer] = compositionHelper.CreateProjectionLayer(localSpace);
 
             // Add depth test info to the chain for each projection layer
             depthTestInfo[layer].type = XR_TYPE_COMPOSITION_LAYER_DEPTH_TEST_FB;
-            depthTestInfo[layer].next = projLayer[layer]->next;
+            depthTestInfo[layer].next = projLayers[layer]->next;
             depthTestInfo[layer].depthMask = true;
             depthTestInfo[layer].compareOp = XR_COMPARE_OP_LESS_FB;
-            const_cast<const void*&>(projLayer[layer]->next) = &depthTestInfo[layer];
+            const_cast<const void*&>(projLayers[layer]->next) = &depthTestInfo[layer];
 
-            depthInfo[layer].resize(projLayer[layer]->viewCount);
-            for (uint32_t j = 0; j < projLayer[layer]->viewCount; j++) {
+            depthInfo[layer].resize(projLayers[layer]->viewCount);
+            for (uint32_t j = 0; j < projLayers[layer]->viewCount; j++) {
                 // create color and depth swapchains
                 swapchain[layer].push_back(
                     compositionHelper.CreateSwapchainWithDepth(colorSwapchainCreateInfo[j], depthSwapchainCreateInfo[j]));
-                const_cast<XrSwapchainSubImage&>(projLayer[layer]->views[j].subImage) =
+                const_cast<XrSwapchainSubImage&>(projLayers[layer]->views[j].subImage) =
                     compositionHelper.MakeDefaultSubImage(swapchain[layer][j].first);
 
                 // Add depth info to the chain for each projection layer view
                 depthInfo[layer][j].type = XR_TYPE_COMPOSITION_LAYER_DEPTH_INFO_KHR;
-                depthInfo[layer][j].next = projLayer[layer]->views[j].next;
+                depthInfo[layer][j].next = projLayers[layer]->views[j].next;
                 depthInfo[layer][j].minDepth = 0.0f;
                 depthInfo[layer][j].maxDepth = 1.0f;
                 depthInfo[layer][j].nearZ = 0.05f;
                 depthInfo[layer][j].farZ = 100.0f;
                 depthInfo[layer][j].subImage = compositionHelper.MakeDefaultSubImage(swapchain[layer][j].second);
-                const_cast<const void*&>(projLayer[layer]->views[j].next) = &depthInfo[layer][j];
+                const_cast<const void*&>(projLayers[layer]->views[j].next) = &depthInfo[layer][j];
             }
         }
 
@@ -834,13 +837,13 @@ namespace Conformance
                             swapchain[layer][j].first, [&](const XrSwapchainImageBaseHeader* swapchainImage) {
                                 GetGlobalData().graphicsPlugin->ClearImageSlice(swapchainImage);
 
-                                const_cast<XrFovf&>(projLayer[layer]->views[j].fov) = views[j].fov;
-                                const_cast<XrPosef&>(projLayer[layer]->views[j].pose) = views[j].pose;
-                                GetGlobalData().graphicsPlugin->RenderView(projLayer[layer]->views[j], swapchainImage,
+                                const_cast<XrFovf&>(projLayers[layer]->views[j].fov) = views[j].fov;
+                                const_cast<XrPosef&>(projLayers[layer]->views[j].pose) = views[j].pose;
+                                GetGlobalData().graphicsPlugin->RenderView(projLayers[layer]->views[j], swapchainImage,
                                                                            RenderParams().Draw(cubes[layer]));
                             });
                     }
-                    layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(projLayer[layer]));
+                    layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(projLayers[layer]));
                 }
             }
             return interactiveLayerManager.EndFrame(frameState, layers);

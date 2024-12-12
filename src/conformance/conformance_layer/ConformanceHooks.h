@@ -19,6 +19,12 @@
 #include "gen_dispatch.h"
 #include <cstdint>
 
+#ifdef __GNUC__
+#define LAYER_PRINT_ATTRIBUTE(a, b) __attribute__((format(printf, a, b)))
+#else
+#define LAYER_PRINT_ATTRIBUTE(a, b)
+#endif
+
 // Implementation of methods are distributed across multiple files, based on the primary handle type.
 // IConformanceHooks provides empty default implementations of all OpenXR functions. Only provide an override
 // if custom validation logic needs to be written.
@@ -29,7 +35,8 @@ struct ConformanceHooks : ConformanceHooksBase
 {
     using ConformanceHooksBase::ConformanceHooksBase;
 
-    void ConformanceFailure(XrDebugUtilsMessageSeverityFlagsEXT severity, const char* functionName, const char* fmtMessage, ...) override;
+    void LAYER_PRINT_ATTRIBUTE(4, 5)
+        ConformanceFailure(XrDebugUtilsMessageSeverityFlagsEXT severity, const char* functionName, const char* fmtMessage, ...) override;
 
     //
     // Defined in Instance.cpp

@@ -191,14 +191,16 @@ namespace Conformance
             }
 
             {
+                // Make sure you can submit at least 16 projection layers successfully
                 INFO("XR_MIN_COMPOSITION_LAYERS_SUPPORTED layers");
                 XrFrameState frameState = waitAndBeginFrame();
                 std::vector<XrView> views = locateViews(frameState);
-                std::vector<ProjectionLayerWithViews> minQuadLayers(XR_MIN_COMPOSITION_LAYERS_SUPPORTED,
+                std::vector<ProjectionLayerWithViews> minProjLayers(XR_MIN_COMPOSITION_LAYERS_SUPPORTED,
                                                                     {views, session.spaceVector.front(), createColorSwapchainSubImage});
                 std::vector<void*> minLayers;  // Convert into an array of pointers (needed by xrEndFrame).
-                std::transform(minQuadLayers.begin(), minQuadLayers.end(), std::back_inserter(minLayers),
+                std::transform(minProjLayers.begin(), minProjLayers.end(), std::back_inserter(minLayers),
                                [](ProjectionLayerWithViews& q) { return (void*)&q.Layer; });
+                // If you hit a "limit exceeded" here, rerun: it should be possible for your runtime to succeed here.
                 CHECK(XR_SUCCESS == endFrame(frameState, minLayers));
             }
         }

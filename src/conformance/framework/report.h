@@ -20,6 +20,7 @@
 #include <iostream>
 #include <streambuf>
 #include <functional>
+#include "utilities/utils.h"
 
 namespace Conformance
 {
@@ -38,10 +39,10 @@ namespace Conformance
     /// @todo Any code that uses this, must be modified to output to the CTS catch2 reporter.
     ///
     /// Do not write new code that uses this function!
-    void ReportF(const char* format, ...);
+    void PRINT_ATTRIBUTE(1, 2) ReportF(const char* format, ...);
 
     /// Formatted report function, like ReportF, but for console output only (when XML report output has another way of including this data)
-    void ReportConsoleOnlyF(const char* format, ...);
+    void PRINT_ATTRIBUTE(1, 2) ReportConsoleOnlyF(const char* format, ...);
 
     /// @}
 

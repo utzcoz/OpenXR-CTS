@@ -282,11 +282,11 @@ namespace Conformance
                                      uint32_t* imageCount) const override;
         bool ValidateSwapchainImageState(XrSwapchain swapchain, uint32_t index, int64_t imageFormat) const override;
 
-        int64_t SelectColorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectColorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
-        int64_t SelectDepthSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectDepthSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
-        int64_t SelectMotionVectorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const override;
+        int64_t SelectMotionVectorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const override;
 
         int64_t GetSRGBA8Format() const override;
 
@@ -308,6 +308,8 @@ namespace Conformance
 
         void RenderView(const XrCompositionLayerProjectionView& layerView, const XrSwapchainImageBaseHeader* colorSwapchainImage,
                         const RenderParams& params) override;
+        void RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                          const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color) override;
 
     private:
         bool initialized{false};
@@ -1103,70 +1105,46 @@ namespace Conformance
     }
 
     // Select the preferred swapchain format from the list of available formats.
-    int64_t OpenGLESGraphicsPlugin::SelectColorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const
+    int64_t OpenGLESGraphicsPlugin::SelectColorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
         // List of supported color swapchain formats.
         // The order of this list does not effect the priority of selecting formats, the runtime list defines that.
-        const std::array<GLenum, 6> f{
-            GL_RGB10_A2,
-            GL_RGBA16,
-            GL_RGBA16F,
-            GL_RGBA32F,
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                GL_RGB10_A2,
+                GL_RGBA16,
+                GL_RGBA16F,
+                GL_RGBA32F,
 
-            // The two below should only be used as a fallback, as they are linear color formats without enough bits for color
-            // depth, thus leading to banding.
-            GL_RGBA8,
-            GL_SRGB8_ALPHA8,
-        };
-
-        const int64_t* formatArrayEnd = imageFormatArray + count;
-        auto it = std::find_first_of(imageFormatArray, formatArrayEnd, f.begin(), f.end());
-
-        if (it == formatArrayEnd) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return imageFormatArray[0];
-        }
-
-        return *it;
+                // The two below should only be used as a fallback, as they are linear color formats without enough bits for color
+                // depth, thus leading to banding.
+                GL_RGBA8,
+                GL_SRGB8_ALPHA8,
+            });
     }
 
-    int64_t OpenGLESGraphicsPlugin::SelectDepthSwapchainFormat(const int64_t* imageFormatArray, size_t count) const
+    int64_t OpenGLESGraphicsPlugin::SelectDepthSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
         // List of supported depth swapchain formats.
-        const std::array<GLenum, 4> f{
-            GL_DEPTH24_STENCIL8,
-            GL_DEPTH_COMPONENT24,
-            GL_DEPTH_COMPONENT16,
-            GL_DEPTH_COMPONENT32F,
-        };
-
-        const int64_t* formatArrayEnd = imageFormatArray + count;
-        auto it = std::find_first_of(imageFormatArray, formatArrayEnd, f.begin(), f.end());
-
-        if (it == formatArrayEnd) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return imageFormatArray[0];
-        }
-
-        return *it;
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                GL_DEPTH24_STENCIL8,
+                GL_DEPTH_COMPONENT24,
+                GL_DEPTH_COMPONENT16,
+                GL_DEPTH_COMPONENT32F,
+            });
     }
 
-    int64_t OpenGLESGraphicsPlugin::SelectMotionVectorSwapchainFormat(const int64_t* imageFormatArray, size_t count) const
+    int64_t OpenGLESGraphicsPlugin::SelectMotionVectorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const
     {
-        // List of swapchain formats suitable for motion vectors.
-        const std::array<GLenum, 1> f{
-            GL_RGBA16F,
-        };
-
-        const int64_t* formatArrayEnd = imageFormatArray + count;
-        auto it = std::find_first_of(imageFormatArray, formatArrayEnd, f.begin(), f.end());
-
-        if (it == formatArrayEnd) {
-            assert(false);  // Assert instead of throw as we need to switch to the big table which can't fail.
-            return imageFormatArray[0];
-        }
-
-        return *it;
+        // Implementation must select a signed format with four components unless there are none with alpha.
+        return SelectSwapchainFormat(  //
+            throwIfNotFound, imageFormatArray,
+            {
+                GL_RGBA16F,
+            });
     }
 
     int64_t OpenGLESGraphicsPlugin::GetSRGBA8Format() const
@@ -1375,6 +1353,15 @@ namespace Conformance
         GL(glUseProgram(0));
         GL(glDisable(GL_SCISSOR_TEST));
         GL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    }
+
+    void OpenGLESGraphicsPlugin::RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                                              const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color)
+    {
+        (void)layerView;
+        (void)colorSwapchainImage;
+        (void)color;
+        /// @todo: implement for OpenGLES
     }
 
 }  // namespace Conformance

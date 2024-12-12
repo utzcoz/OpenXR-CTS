@@ -163,7 +163,6 @@ namespace Conformance
     static inline void SharedLocalFloorAutomated(const FeatureSet& featureSet)
     {
         GlobalData& globalData = GetGlobalData();
-        const std::vector<const char*> extensions = SkipOrGetExtensions("Local floor", globalData, featureSet);
 
         // See if it is explicitly enabled by default
         FeatureSet enabled;
@@ -179,6 +178,9 @@ namespace Conformance
                 REQUIRE_THAT(refSpaceTypes, !Catch::Matchers::VectorContains(XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR_EXT));
             }
         }
+
+        // Skip after the "Requirements not enabled" tests, so that unavailability of LOCAL_FLOOR on OpenXR 1.0 is tested before the skip.
+        const std::vector<const char*> extensions = SkipOrGetExtensions("Local floor", globalData, featureSet);
 
         SECTION("Validate creation")
         {
@@ -342,9 +344,9 @@ namespace Conformance
             SKIP("XR_REFERENCE_SPACE_TYPE_STAGE not supported");
         }
 
-        XrSpace refSpace = compositionHelper.CreateReferenceSpace(refSpaceType, Pose::Identity);
-        XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL, Pose::Identity);
-        XrSpace localFloorSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR_EXT, Pose::Identity);
+        XrSpace refSpace = compositionHelper.CreateReferenceSpace(refSpaceType);
+        XrSpace localSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL);
+        XrSpace localFloorSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR_EXT);
 
         // Set up composition projection layer and swapchains (one swapchain per view).
         std::vector<XrSwapchain> swapchains;

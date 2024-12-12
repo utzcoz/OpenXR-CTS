@@ -45,8 +45,6 @@ namespace Conformance
     {
         GlobalData& globalData = GetGlobalData();
 
-        const std::vector<const char*> extensions = SkipOrGetExtensions("Locate spaces", globalData, featureSet);
-
         SECTION("Requirements not enabled")
         {
             // See if it is explicitly enabled by default
@@ -66,6 +64,9 @@ namespace Conformance
                 ValidateInstanceExtensionFunctionNotSupported(instance, "xrLocateSpaces");
             }
         }
+
+        // Skip after the "Requirements not enabled" tests, so that unavailability of xrLocateSpaces{,KHR} on OpenXR 1.0 is tested before the skip.
+        const std::vector<const char*> extensions = SkipOrGetExtensions("Locate spaces", globalData, featureSet);
 
         AutoBasicInstance instance(extensions, AutoBasicInstance::createSystemId);
 

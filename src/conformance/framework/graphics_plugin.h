@@ -311,14 +311,17 @@ namespace Conformance
         virtual bool ValidateSwapchainImageState(XrSwapchain /*swapchain*/, uint32_t /*index*/, int64_t /*imageFormat*/) const
             noexcept(false) = 0;
 
+        /// Select the first supported color swapchain format from the list of available formats.
         /// Implementation must select a format with alpha unless there are none with alpha.
-        virtual int64_t SelectColorSwapchainFormat(const int64_t* /*imageFormatArray*/, size_t /*count*/) const = 0;
+        /// (As of writing, no backend supports a format without alpha, so this may be buggy.)
+        virtual int64_t SelectColorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const = 0;
 
-        /// Select the preferred swapchain format from the list of available formats.
-        virtual int64_t SelectDepthSwapchainFormat(const int64_t* /*imageFormatArray*/, size_t /*count*/) const = 0;
+        /// Select the first supported depth swapchain format from the list of available formats.
+        virtual int64_t SelectDepthSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const = 0;
 
+        /// Select the first swapchain format appropriate for motion vectors from the list of available formats.
         /// Implementation must select a signed format with four components unless there are none with alpha.
-        virtual int64_t SelectMotionVectorSwapchainFormat(const int64_t* /*imageFormatArray*/, size_t /*count*/) const = 0;
+        virtual int64_t SelectMotionVectorSwapchainFormat(bool throwIfNotFound, span<const int64_t> imageFormatArray) const = 0;
 
         /// Select the preferred swapchain format.
         virtual int64_t GetSRGBA8Format() const = 0;
@@ -401,6 +404,11 @@ namespace Conformance
         /// Render a list of drawables to a swapchain image. ClearImageSlice must be called first to clear internal state.
         virtual void RenderView(const XrCompositionLayerProjectionView& layerView, const XrSwapchainImageBaseHeader* colorSwapchainImage,
                                 const RenderParams& params) = 0;
+
+        /// Clears a slice to an arbitrary color with a compute shader. Can only be used with XR_SWAPCHAIN_USAGE_UNORDERED_ACCESS_BIT.
+        /// @todo The actual rendering is only implemented for Vulkan. On OpenGL (ES) this is a noop, on D3D11/D3D12 it checks whether the appropriate flags are set.
+        virtual void RenderClearImageSliceCompute(const XrCompositionLayerProjectionView& layerView,
+                                                  const XrSwapchainImageBaseHeader* colorSwapchainImage, XrColor4f color) = 0;
     };
 
     /// Create a graphics plugin for the graphics API specified in the options.

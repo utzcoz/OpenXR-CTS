@@ -207,6 +207,12 @@
 #define striequal(a, b) (strcasecmp(a, b) == 0)
 #endif
 
+#ifdef __GNUC__
+#define PRINT_ATTRIBUTE(a, b) __attribute__((format(printf, a, b)))
+#else
+#define PRINT_ATTRIBUTE(a, b)
+#endif
+
 namespace Conformance
 {
     // Copied directly from the helloXr project. Let's get to a point in the future where all these
@@ -227,19 +233,19 @@ namespace Conformance
     /// The behavior is undefined if the specified format or arguments are invalid.
     /// Example usage:
     ///     std::string s = StringSprintf("Hello %s", "world");
-    std::string StringSprintf(const char* format, ...);
+    std::string PRINT_ATTRIBUTE(1, 2) StringSprintf(const char* format, ...);
 
     /// Returns a std::string that was initialized via printf-style formatting.
     /// The behavior is undefined if the specified format or arguments are invalid.
     /// Example usage:
     ///     std::string s = StringVsprintf("Hello %s", args);
-    std::string StringVsprintf(const char* format, va_list args);
+    std::string PRINT_ATTRIBUTE(1, 0) StringVsprintf(const char* format, va_list args);
 
     /// Returns a std::string that was appended to via printf-style formatting.
     /// The behavior is undefined if the specified format or arguments are invalid.
     /// Example usage:
     ///     AppendSprintf(s, "appended %s", "hello world");
-    std::string& AppendSprintf(std::string& s, const char* format, ...);
+    std::string& PRINT_ATTRIBUTE(2, 3) AppendSprintf(std::string& s, const char* format, ...);
 
     /// Changes the case of str, typically for the purpose of exercising case-sensitivity requirements.
     /// Returns a reference to the input str.

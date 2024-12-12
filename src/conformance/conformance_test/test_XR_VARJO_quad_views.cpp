@@ -143,7 +143,7 @@ namespace Conformance
                                                 true);
             XrSession session = compositionHelper.GetSession();
 
-            XrSpace viewSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_VIEW, Pose::Identity);
+            XrSpace viewSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_VIEW);
 
             InteractionManager& interactionManager = compositionHelper.GetInteractionManager();
             interactionManager.AttachActionSets();
@@ -212,7 +212,7 @@ namespace Conformance
             InteractiveLayerManager interactiveLayerManager(compositionHelper, "projection_separate.png", "Stereo inset views.");
             XrSession session = compositionHelper.GetSession();
 
-            XrSpace viewSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_VIEW, Pose::Identity);
+            XrSpace viewSpace = compositionHelper.CreateReferenceSpace(XR_REFERENCE_SPACE_TYPE_VIEW);
 
             InteractionManager& interactionManager = compositionHelper.GetInteractionManager();
             interactionManager.AttachActionSets();
